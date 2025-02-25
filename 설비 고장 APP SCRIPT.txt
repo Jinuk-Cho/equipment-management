@@ -1,0 +1,92 @@
+function updateOperationRatesVertical() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sourceSheet = ss.getSheetByName("설문지 응답 시트1"); // 데이터 입력 시트
+  var targetSheet = ss.getSheetByName("DATA");                // 결과 출력 시트
+
+  if (!sourceSheet) {
+    Logger.log("설문지 응답 시트1 시트를 찾을 수 없습니다.");
+    return;
+  }
+  if (!targetSheet) {
+    Logger.log("DATA 시트를 찾을 수 없습니다.");
+    return;
+  }
+
+  // 전체 데이터 읽기 (헤더 포함)
+  var data = sourceSheet.getDataRange().getValues();
+  if (data.length < 2) {
+    Logger.log("데이터가 충분하지 않습니다.");
+    return;
+  }
+
+  // "날자" 컬럼은 13번째 열 (인덱스 12)
+  var dateColumnIndex = 12;
+  var dateCounts = {}; // 날짜별 고장 건수를 집계할 객체
+
+  // 2행부터 데이터 순회 (첫 행은 헤더)
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var dateVal = row[dateColumnIndex];
+    if (dateVal) {
+      var formattedDate = "";
+      if (dateVal instanceof Date) {
+        formattedDate = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), "yyyy/MM/dd");
+      } else {
+        var tempDate = new Date(dateVal);
+        if (!isNaN(tempDate.getTime())) {
+          formattedDate = Utilities.formatDate(tempDate, Session.getScriptTimeZone(), "yyyy/MM/dd");
+        } else {
+          formattedDate = dateVal.toString().trim();
+        }
+      }
+      // 잘못된 날짜("1970/01/01")는 건너뜁니다.
+      if (formattedDate === "1970/01/01") {
+        continue;
+      }
+      if (dateCounts[formattedDate]) {
+        dateCounts[formattedDate]++;
+      } else {
+        dateCounts[formattedDate] = 1;
+      }
+    }
+  }
+
+  // 출력할 데이터 배열 생성 (헤더 포함)
+  // 헤더: 날짜, 전체대수, 고장대수, 고장률(%), 가동률(%)
+  var output = [];
+  output.push(["날짜", "전체대수", "고장대수", "고장률(%)", "가동률(%)"]);
+  var totalMachines = 800;
+  
+  // 날짜별로 정렬된 키 배열 생성
+  var dates = Object.keys(dateCounts).sort();
+  for (var j = 0; j < dates.length; j++) {
+    var date = dates[j];
+    var faults = dateCounts[date];
+    // 고장률과 가동률을 퍼센트 서식 적용을 위해 0.05(5%) 형식으로 계산
+    var failureRate = faults / totalMachines;
+    var operationRate = 1 - failureRate;
+    output.push([date, totalMachines, faults, failureRate, operationRate]);
+  }
+
+  // DATA 시트의 기존 내용을 지우고 A1 셀부터 결과 출력
+  targetSheet.clearContents();
+  targetSheet.getRange(1, 1, output.length, output[0].length).setValues(output);
+
+  // 헤더를 제외한 데이터 영역에 대해 셀 서식 적용
+  if (output.length > 1) {
+    // B열(전체대수)와 C열(고장대수)는 정수 형식
+    targetSheet.getRange(2, 2, output.length - 1, 2).setNumberFormat("0");
+    // D열(고장률)과 E열(가동률)은 소수점 한자리 퍼센트 형식
+    targetSheet.getRange(2, 4, output.length - 1, 2).setNumberFormat("0.0%");
+  }
+  
+  // 전체 테이블을 가운데 정렬
+  targetSheet.getRange(1, 1, output.length, output[0].length).setHorizontalAlignment("center");
+}
+
+/*
+ * 실시간 업데이트 설정:
+ * 위 함수를 onEdit 또는 onChange 트리거에 연결하면,
+ * 데이터가 변경될 때마다 자동으로 updateOperationRatesVertical()가 실행되어
+ * DATA 시트의 값이 최신 상태로 업데이트됩니다.
+ */
