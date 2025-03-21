@@ -1,3 +1,7 @@
+// 이 파일은 구글 폼으로 부터 입력된 구글 시트에 저장된 파일의 스크립트이다
+// 이 파일의 최종 수정 날자는 25.02.2025 이다
+// 현재 시간은 오후 15시 43분이다
+
 function updateOperationRatesVertical() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sourceSheet = ss.getSheetByName("설문지 응답 시트1"); // 데이터 입력 시트
