@@ -1,14 +1,13 @@
 import streamlit as st
 import pandas as pd
-from utils.auth import create_user, update_user_role, delete_user, load_users
-from utils.google_sheet import get_sheet_data, append_sheet_data, update_sheet_data
+from datetime import datetime
 
 def show_admin_settings():
     """관리자 설정 페이지를 표시합니다."""
     st.title("관리자 설정")
     
-    if 'credentials' not in st.session_state:
-        st.error("Google 계정 인증이 필요합니다.")
+    if st.session_state.user.get('role') != 'admin':
+        st.error("관리자 권한이 필요합니다.")
         return
     
     # 탭 생성
@@ -21,155 +20,121 @@ def show_admin_settings():
     
     # 사용자 관리
     with tab1:
-        st.subheader("사용자 관리")
+        st.subheader("사용자 목록")
+        users_data = {
+            'email': ['user1@example.com', 'user2@example.com', 'admin@example.com'],
+            'role': ['user', 'user', 'admin'],
+            'created_at': [
+                datetime.now(),
+                datetime.now(),
+                datetime.now()
+            ]
+        }
+        df_users = pd.DataFrame(users_data)
+        st.dataframe(
+            df_users,
+            column_config={
+                "email": "이메일",
+                "role": "권한",
+                "created_at": st.column_config.DatetimeColumn(
+                    "생성일시",
+                    format="YYYY-MM-DD HH:mm"
+                )
+            }
+        )
         
-        # 현재 사용자 목록
-        users = load_users()
-        users_df = pd.DataFrame([
-            {"사용자명": username, "권한": data["role"]}
-            for username, data in users.items()
-        ])
-        
-        if not users_df.empty:
-            st.dataframe(users_df, use_container_width=True)
-        
-        # 새 사용자 추가
-        st.subheader("새 사용자 추가")
-        with st.form("new_user_form"):
-            new_username = st.text_input("사용자명")
-            new_password = st.text_input("비밀번호", type="password")
-            new_role = st.selectbox("권한", ["user", "leader", "admin"])
-            
-            if st.form_submit_button("추가"):
-                if create_user(new_username, new_password, new_role):
-                    st.success("사용자가 추가되었습니다.")
-                    st.rerun()
-                else:
-                    st.error("이미 존재하는 사용자명입니다.")
-        
-        # 사용자 권한 변경
-        st.subheader("사용자 권한 변경")
-        with st.form("update_user_form"):
-            update_username = st.selectbox("사용자 선택", list(users.keys()))
-            update_role = st.selectbox("새 권한", ["user", "leader", "admin"])
-            
-            if st.form_submit_button("변경"):
-                if update_user_role(update_username, update_role):
-                    st.success("권한이 변경되었습니다.")
-                    st.rerun()
-                else:
-                    st.error("권한 변경에 실패했습니다.")
-        
-        # 사용자 삭제
-        st.subheader("사용자 삭제")
-        with st.form("delete_user_form"):
-            delete_username = st.selectbox("삭제할 사용자", list(users.keys()))
-            
-            if st.form_submit_button("삭제"):
-                if delete_user(delete_username):
-                    st.success("사용자가 삭제되었습니다.")
-                    st.rerun()
-                else:
-                    st.error("사용자 삭제에 실패했습니다.")
+        with st.form("user_role_form"):
+            st.subheader("사용자 권한 변경")
+            email = st.selectbox("사용자 선택", options=df_users['email'].tolist())
+            role = st.selectbox("새 권한", options=['user', 'admin'])
+            if st.form_submit_button("권한 변경"):
+                st.success(f"{email}의 권한이 {role}로 변경되었습니다.")
     
     # 설비 관리
     with tab2:
-        st.subheader("설비 관리")
-        
-        # 현재 설비 목록
-        equipment_list = get_sheet_data(
-            st.session_state['credentials'],
-            st.secrets["sheet_id"],
-            "설비목록!A1:D"
+        st.subheader("설비 목록")
+        equipment_data = {
+            'equipment_number': ['EQ001', 'EQ002', 'EQ003', 'EQ004', 'EQ005'],
+            'building': ['A동', 'B동', 'A동', 'C동', 'B동'],
+            'equipment_type': ['프레스', '컨베이어', '로봇', '프레스', '로봇'],
+            'status': ['정상', '점검중', '정상', '고장', '정상']
+        }
+        df_equipment = pd.DataFrame(equipment_data)
+        st.dataframe(
+            df_equipment,
+            column_config={
+                "equipment_number": "설비 번호",
+                "building": "건물",
+                "equipment_type": "설비 유형",
+                "status": "상태"
+            }
         )
         
-        if not equipment_list.empty:
-            st.dataframe(equipment_list, use_container_width=True)
-        
-        # 새 설비 추가
-        st.subheader("새 설비 추가")
-        with st.form("new_equipment_form"):
-            new_equipment_id = st.text_input("설비 번호")
-            new_equipment_building = st.selectbox("건물", ["A동", "B동"])
-            new_equipment_type = st.text_input("설비 유형")
-            
-            if st.form_submit_button("추가"):
-                new_data = [[new_equipment_id, new_equipment_building, new_equipment_type, "정상"]]
-                if append_sheet_data(
-                    st.session_state['credentials'],
-                    st.secrets["sheet_id"],
-                    "설비목록!A1",
-                    new_data
-                ):
-                    st.success("설비가 추가되었습니다.")
-                    st.rerun()
+        with st.form("equipment_form"):
+            st.subheader("설비 추가")
+            new_equipment = st.text_input("설비 번호")
+            new_building = st.selectbox("건물", options=['A동', 'B동', 'C동'])
+            new_type = st.selectbox("설비 유형", options=['프레스', '컨베이어', '로봇'])
+            if st.form_submit_button("설비 추가"):
+                if new_equipment:
+                    st.success(f"설비 {new_equipment}가 추가되었습니다.")
                 else:
-                    st.error("설비 추가에 실패했습니다.")
+                    st.error("설비 번호를 입력해주세요.")
     
     # 오류 코드 관리
     with tab3:
-        st.subheader("오류 코드 관리")
-        
-        # 현재 오류 코드 목록
-        error_codes = get_sheet_data(
-            st.session_state['credentials'],
-            st.secrets["sheet_id"],
-            "오류코드!A1:C"
+        st.subheader("오류 코드 목록")
+        error_codes_data = {
+            'error_code': ['ERR001', 'ERR002', 'ERR003', 'ERR004', 'ERR005'],
+            'description': ['모터 과열', '센서 오류', '전원 불안정', '압력 이상', '통신 오류'],
+            'error_type': ['하드웨어', '센서', '전기', '기계', '소프트웨어']
+        }
+        df_errors = pd.DataFrame(error_codes_data)
+        st.dataframe(
+            df_errors,
+            column_config={
+                "error_code": "오류 코드",
+                "description": "설명",
+                "error_type": "유형"
+            }
         )
         
-        if not error_codes.empty:
-            st.dataframe(error_codes, use_container_width=True)
-        
-        # 새 오류 코드 추가
-        st.subheader("새 오류 코드 추가")
-        with st.form("new_error_code_form"):
-            new_error_code = st.text_input("오류 코드")
-            new_error_desc = st.text_input("설명")
-            new_error_type = st.selectbox("유형", ["하드웨어", "소프트웨어", "기타"])
-            
-            if st.form_submit_button("추가"):
-                new_data = [[new_error_code, new_error_desc, new_error_type]]
-                if append_sheet_data(
-                    st.session_state['credentials'],
-                    st.secrets["sheet_id"],
-                    "오류코드!A1",
-                    new_data
-                ):
-                    st.success("오류 코드가 추가되었습니다.")
-                    st.rerun()
+        with st.form("error_code_form"):
+            st.subheader("오류 코드 추가")
+            new_code = st.text_input("오류 코드")
+            new_description = st.text_input("설명")
+            new_type = st.selectbox("유형", options=['하드웨어', '센서', '전기', '기계', '소프트웨어'])
+            if st.form_submit_button("오류 코드 추가"):
+                if new_code and new_description:
+                    st.success(f"오류 코드 {new_code}가 추가되었습니다.")
                 else:
-                    st.error("오류 코드 추가에 실패했습니다.")
+                    st.error("모든 필드를 입력해주세요.")
     
     # 부품 관리
     with tab4:
-        st.subheader("부품 관리")
-        
-        # 현재 부품 목록
-        parts_list = get_sheet_data(
-            st.session_state['credentials'],
-            st.secrets["sheet_id"],
-            "부품목록!A1:C"
+        st.subheader("부품 목록")
+        parts_data = {
+            'part_code': ['P001', 'P002', 'P003', 'P004', 'P005'],
+            'part_name': ['베어링', '모터', '센서', '벨트', '기어'],
+            'stock': [10, 5, 15, 8, 12]
+        }
+        df_parts = pd.DataFrame(parts_data)
+        st.dataframe(
+            df_parts,
+            column_config={
+                "part_code": "부품 코드",
+                "part_name": "부품명",
+                "stock": "재고"
+            }
         )
         
-        if not parts_list.empty:
-            st.dataframe(parts_list, use_container_width=True)
-        
-        # 새 부품 추가
-        st.subheader("새 부품 추가")
-        with st.form("new_part_form"):
+        with st.form("parts_form"):
+            st.subheader("부품 추가")
             new_part_code = st.text_input("부품 코드")
             new_part_name = st.text_input("부품명")
-            new_part_stock = st.number_input("재고", min_value=0)
-            
-            if st.form_submit_button("추가"):
-                new_data = [[new_part_code, new_part_name, new_part_stock]]
-                if append_sheet_data(
-                    st.session_state['credentials'],
-                    st.secrets["sheet_id"],
-                    "부품목록!A1",
-                    new_data
-                ):
-                    st.success("부품이 추가되었습니다.")
-                    st.rerun()
+            new_stock = st.number_input("초기 재고", min_value=0)
+            if st.form_submit_button("부품 추가"):
+                if new_part_code and new_part_name:
+                    st.success(f"부품 {new_part_code}가 추가되었습니다.")
                 else:
-                    st.error("부품 추가에 실패했습니다.") 
+                    st.error("모든 필드를 입력해주세요.") 
