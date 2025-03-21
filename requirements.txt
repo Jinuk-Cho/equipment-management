@@ -4,4 +4,6 @@ plotly==5.18.0
 google-auth-oauthlib==1.2.0
 google-auth==2.27.0
 google-api-python-client==2.118.0
-numpy==1.26.3 
+numpy==1.26.3
+supabase-py==2.3.4
+python-dotenv==1.0.1 
