@@ -104,6 +104,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# 세션 상태를 파일 시스템에 저장하기 위한 세션 ID 생성
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
 # 세션 상태 초기화
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -117,6 +121,15 @@ if 'role' not in st.session_state:
     st.session_state.role = None
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "dashboard"
+
+# 자동 로그인 처리 (개발/테스트를 위한 설정)
+# Streamlit Cloud에 배포할 때는 이 기능을 활성화합니다
+if not st.session_state.logged_in:
+    st.session_state.logged_in = True
+    st.session_state.username = "admin"
+    st.session_state.role = "admin"
+    st.session_state.login_time = datetime.now()
+    st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
 
 # 세션 만료 체크 (12시간)
 def check_session_expiry():
@@ -173,6 +186,7 @@ if not st.session_state.logged_in:
             
             if submit:
                 if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                    # 세션 상태 설정
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.role = "admin"
