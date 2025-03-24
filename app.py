@@ -6,6 +6,7 @@ from components.equipment_detail import show_equipment_detail
 from components.data_input import show_data_input
 from components.reports import show_reports
 from components.admin import show_admin_settings
+from components.language import get_text
 
 # 앱 재배포 트리거 - 2024.07.17
 
@@ -15,33 +16,25 @@ ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin")
 
 # 페이지 설정
 st.set_page_config(
-    page_title="Hệ thống quản lý thiết bị / 설비 관리 시스템",
+    page_title="설비 관리 시스템 | Hệ thống quản lý thiết bị",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # CSS 스타일 적용
 st.markdown("""
     <style>
         .main > div {
-            max-width: 1200px;
-            margin: auto;
-            padding-top: 1rem;
+            padding: 0 !important;
         }
         .stButton>button {
             width: 100%;
         }
-        /* 사이드바 스타일 */
-        [data-testid="stSidebar"] {
-            background-color: #f8f9fa;
-            min-width: 200px !important;
-            max-width: 250px !important;
-        }
         /* 메인 컨텐츠 영역 */
         .main .block-container {
-            padding-left: 20px;
-            padding-right: 20px;
+            padding: 1rem !important;
+            max-width: 100% !important;
         }
         /* 제목 스타일 */
         .system-title {
@@ -49,6 +42,7 @@ st.markdown("""
             font-weight: bold;
             margin-bottom: 0.5rem;
             line-height: 1.2;
+            text-align: center;
         }
         .system-title-vn {
             color: #1E3A8A;
@@ -57,217 +51,158 @@ st.markdown("""
         .system-title-kr {
             color: #2563EB;
         }
-        /* 메뉴 스타일 */
-        .menu-item {
-            font-size: 0.9rem;
-            line-height: 1.2;
-            margin-bottom: 0.5rem;
-        }
-        .menu-item-vn {
-            color: #1E3A8A;
-            margin-bottom: 0.2rem;
-        }
-        .menu-item-kr {
-            color: #2563EB;
-        }
-        /* 라벨 스타일 */
-        .label-text {
-            font-size: 0.9rem;
-            line-height: 1.2;
-        }
-        .label-text-vn {
-            color: #1E3A8A;
-        }
-        .label-text-kr {
-            color: #2563EB;
-            margin-left: 0.3rem;
-        }
-        /* 메뉴 탭 스타일 */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 1rem;
+        /* 차트 컨테이너 */
+        .chart-container {
             margin-bottom: 1rem;
+        }
+        /* 플롯리 차트 크기 조정 */
+        .js-plotly-plot {
+            height: 300px !important;
+        }
+        /* 언어 선택 버튼 */
+        .language-selector {
+            width: 120px;
+        }
+        /* 메뉴 바 */
+        .menu-bar {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
             background-color: #f8f9fa;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
+            padding: 10px;
+            border-radius: 5px;
         }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            padding: 0 1rem;
-            font-weight: bold;
+        .menu-item {
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
         }
-        .stTabs [data-baseweb="tab"]:hover {
-            background-color: #e2e8f0;
+        .menu-item:hover {
+            background-color: #e9ecef;
         }
-        .stTabs [data-baseweb="tab-highlight"] {
+        .menu-item.active {
             background-color: #2563EB;
+            color: white;
+        }
+        /* 상단 바 */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        /* 언어 선택기 컨테이너 */
+        .language-container {
+            display: flex;
+            justify-content: flex-end;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# 세션 상태를 파일 시스템에 저장하기 위한 세션 ID 생성
-if 'session_id' not in st.session_state:
-    st.session_state.session_id = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
 # 세션 상태 초기화
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'login_time' not in st.session_state:
-    st.session_state.login_time = None
-if 'session_expiry' not in st.session_state:
-    st.session_state.session_expiry = None
-if 'username' not in st.session_state:
-    st.session_state.username = None
-if 'role' not in st.session_state:
-    st.session_state.role = None
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "dashboard"
-
-# 자동 로그인 처리 (개발/테스트를 위한 설정)
-# Streamlit Cloud에 배포할 때는 이 기능을 활성화합니다
-if not st.session_state.logged_in:
     st.session_state.logged_in = True
     st.session_state.username = "admin"
     st.session_state.role = "admin"
     st.session_state.login_time = datetime.now()
     st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
 
-# 세션 만료 체크 (12시간)
-def check_session_expiry():
-    if st.session_state.logged_in and st.session_state.session_expiry:
-        if datetime.now() > st.session_state.session_expiry:
-            st.session_state.logged_in = False
-            st.session_state.username = None
-            st.session_state.role = None
-            st.session_state.login_time = None
-            st.session_state.session_expiry = None
-            st.rerun()
+# 언어 설정 초기화 (기본값: 한국어)
+if 'language' not in st.session_state:
+    st.session_state.language = 'ko'
 
-# 세션 체크
-check_session_expiry()
+# 현재 페이지 설정 초기화
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'dashboard'
 
-# 로그인 페이지
-if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown("""
-            <div class="system-title">
-                <div class="system-title-vn">Hệ thống quản lý thiết bị</div>
-                <div class="system-title-kr">설비 관리 시스템</div>
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown("---")
-        
-        # 로그인 폼
-        st.markdown("""
-            <div class="menu-item">
-                <div class="menu-item-vn">Đăng nhập</div>
-                <div class="menu-item-kr">로그인</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            st.markdown("""
-                <div class="label-text">
-                    <span class="label-text-vn">ID</span>
-                    <span class="label-text-kr">아이디</span>
-                </div>
-            """, unsafe_allow_html=True)
-            username = st.text_input("username_label", label_visibility="collapsed", key="username_input")
-            
-            st.markdown("""
-                <div class="label-text">
-                    <span class="label-text-vn">Mật khẩu</span>
-                    <span class="label-text-kr">비밀번호</span>
-                </div>
-            """, unsafe_allow_html=True)
-            password = st.text_input("password_label", type="password", label_visibility="collapsed", key="password_input")
-            
-            submit = st.form_submit_button("Đăng nhập / 로그인", use_container_width=True)
-            
-            if submit:
-                if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-                    # 세션 상태 설정
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.session_state.role = "admin"
-                    st.session_state.login_time = datetime.now()
-                    st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
-                    st.success("Đăng nhập thành công! / 로그인 성공!")
-                    st.rerun()
-                else:
-                    st.error("ID hoặc mật khẩu không chính xác / 아이디 또는 비밀번호가 일치하지 않습니다.")
+def toggle_language():
+    """언어 설정을 변경합니다."""
+    if st.session_state.language == 'ko':
+        st.session_state.language = 'vi'
+    else:
+        st.session_state.language = 'ko'
+    st.rerun()
 
-# 메인 애플리케이션
-else:
-    # 사이드바 - 최소화된 사용자 정보만 표시
-    with st.sidebar:
-        st.markdown("""
-            <div class="system-title">
-                <div class="system-title-vn">Xin chào!</div>
-                <div class="system-title-kr">환영합니다!</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-            <div class="label-text">
-                <span class="label-text-vn">Người dùng</span>
-                <span class="label-text-kr">사용자</span>: {st.session_state.username}
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-            <div class="label-text">
-                <span class="label-text-vn">Thời gian đăng nhập</span>
-                <span class="label-text-kr">로그인 시간</span>: {st.session_state.login_time.strftime('%Y-%m-%d %H:%M')}
-            </div>
-        """, unsafe_allow_html=True)
-        
-        remaining_time = st.session_state.session_expiry - datetime.now()
-        hours = remaining_time.seconds // 3600
-        minutes = (remaining_time.seconds % 3600) // 60
-        st.markdown(f"""
-            <div class="label-text">
-                <span class="label-text-vn">Thời gian còn lại</span>
-                <span class="label-text-kr">세션 만료까지</span>: {hours}시간 {minutes}분
-            </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("Đăng xuất / 로그아웃", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.username = None
-            st.session_state.role = None
-            st.session_state.login_time = None
-            st.session_state.session_expiry = None
-            st.rerun()
-    
-    # 메인 컨텐츠 영역 - 상단에 메뉴 탭 표시
-    st.markdown("""
+def change_page(page):
+    """페이지를 변경합니다."""
+    st.session_state.current_page = page
+    st.rerun()
+
+# 현재 선택된 언어
+current_lang = st.session_state.language
+current_page = st.session_state.current_page
+
+# 상단 바 - 제목과 언어 선택기
+col1, col2, col3 = st.columns([1, 4, 1])
+
+with col1:
+    # 빈 공간
+    pass
+
+with col2:
+    # 시스템 제목
+    st.markdown(f"""
         <div class="system-title">
-            <div class="system-title-vn">Hệ thống quản lý thiết bị</div>
-            <div class="system-title-kr">설비 관리 시스템</div>
+            {get_text("system_title", current_lang)}
         </div>
     """, unsafe_allow_html=True)
-    
-    # 탭 메뉴를 메인 컨텐츠의 최상단에 명확하게 표시
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Bảng điều khiển / 대시보드",
-        "Chi tiết thiết bị / 설비 상세",
-        "Nhập dữ liệu / 데이터 입력",
-        "Báo cáo / 보고서",
-        "Cài đặt quản trị / 관리자 설정"
-    ])
-    
-    # 각 탭의 컨텐츠
-    with tab1:
-        show_dashboard()
-    with tab2:
-        show_equipment_detail()
-    with tab3:
-        show_data_input()
-    with tab4:
-        show_reports()
-    with tab5:
-        if st.session_state.role == 'admin':
-            show_admin_settings()
-        else:
-            st.error("Yêu cầu quyền quản trị viên / 관리자 권한이 필요합니다.")
+
+with col3:
+    # 언어 선택 버튼
+    language_display = "한국어" if current_lang == 'ko' else "Tiếng Việt"
+    st.button(language_display, key="language_button", on_click=toggle_language, help="언어 변경 / Thay đổi ngôn ngữ", use_container_width=True)
+
+# 메뉴 바
+st.markdown(f"""
+    <div class="menu-bar">
+        <div class="menu-item {'active' if current_page == 'dashboard' else ''}" 
+             onclick="parent.postMessage({{command: 'streamlitClick', target: 'dashboard_btn'}}, '*')">
+            {get_text("dashboard", current_lang)}
+        </div>
+        <div class="menu-item {'active' if current_page == 'equipment_detail' else ''}" 
+             onclick="parent.postMessage({{command: 'streamlitClick', target: 'equipment_btn'}}, '*')">
+            {get_text("equipment_detail", current_lang)}
+        </div>
+        <div class="menu-item {'active' if current_page == 'data_input' else ''}" 
+             onclick="parent.postMessage({{command: 'streamlitClick', target: 'data_input_btn'}}, '*')">
+            {get_text("data_input", current_lang)}
+        </div>
+        <div class="menu-item {'active' if current_page == 'reports' else ''}" 
+             onclick="parent.postMessage({{command: 'streamlitClick', target: 'reports_btn'}}, '*')">
+            {get_text("reports", current_lang)}
+        </div>
+        <div class="menu-item {'active' if current_page == 'admin_settings' else ''}" 
+             onclick="parent.postMessage({{command: 'streamlitClick', target: 'admin_btn'}}, '*')">
+            {get_text("admin_settings", current_lang)}
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 숨겨진 버튼으로 JavaScript 클릭 이벤트 처리
+if st.button("대시보드", key="dashboard_btn", on_click=change_page, args=('dashboard',), help="대시보드로 이동", visible=False):
+    pass
+if st.button("설비 상세", key="equipment_btn", on_click=change_page, args=('equipment_detail',), help="설비 상세로 이동", visible=False):
+    pass
+if st.button("데이터 입력", key="data_input_btn", on_click=change_page, args=('data_input',), help="데이터 입력으로 이동", visible=False):
+    pass
+if st.button("보고서", key="reports_btn", on_click=change_page, args=('reports',), help="보고서로 이동", visible=False):
+    pass
+if st.button("관리자 설정", key="admin_btn", on_click=change_page, args=('admin_settings',), help="관리자 설정으로 이동", visible=False):
+    pass
+
+# 컨텐츠 표시
+if current_page == 'dashboard':
+    show_dashboard(current_lang)
+elif current_page == 'equipment_detail':
+    show_equipment_detail(current_lang)
+elif current_page == 'data_input':
+    show_data_input(current_lang)
+elif current_page == 'reports':
+    show_reports(current_lang)
+elif current_page == 'admin_settings':
+    if st.session_state.role == 'admin':
+        show_admin_settings(current_lang)
+    else:
+        st.error(get_text("admin_required", current_lang))
