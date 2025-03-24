@@ -7,6 +7,8 @@ from components.data_input import show_data_input
 from components.reports import show_reports
 from components.admin import show_admin_settings
 
+# 앱 재배포 트리거 - 2024.07.17
+
 # Streamlit Cloud에서 환경 변수 가져오기
 ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin")
