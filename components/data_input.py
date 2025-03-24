@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import json
+from utils.supabase_client import add_error_history, add_parts_replacement
 
 def show_data_input():
     """데이터 입력 페이지를 표시합니다."""
@@ -69,8 +70,11 @@ def show_data_input():
                 
                 # 입력 데이터 생성
                 timestamp = datetime.now()
-                data = {
-                    "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # 세션용 데이터
+                session_data = {
+                    "timestamp": timestamp_str,
                     "equipment": equipment,
                     "error_code": error_code,
                     "error_detail": error_detail,
@@ -81,10 +85,55 @@ def show_data_input():
                     "images": len(image_paths)
                 }
                 
-                # 입력 내역에 추가
-                st.session_state.input_history.insert(0, data)  # 최신 항목이 맨 위에 오도록 추가
+                # Supabase용 에러 히스토리 데이터
+                error_data = {
+                    "timestamp": timestamp_str,
+                    "equipment_number": equipment,
+                    "error_code": error_code,
+                    "error_detail": error_detail,
+                    "repair_time": repair_time,
+                    "repair_method": f"부품 {part_code} 교체",
+                    "worker": worker,
+                    "supervisor": supervisor,
+                    "image_paths": ",".join(image_paths) if image_paths else ""
+                }
                 
-                st.success("Dữ liệu đã được lưu thành công / 데이터가 저장되었습니다.")
+                # Supabase용 부품 교체 데이터
+                parts_data = {
+                    "timestamp": timestamp_str,
+                    "equipment_number": equipment,
+                    "part_code": part_code,
+                    "worker": worker,
+                    "supervisor": supervisor
+                }
+                
+                # 데이터 저장
+                success_session = True
+                success_error = False
+                success_parts = False
+                
+                # 세션 상태에 저장
+                st.session_state.input_history.insert(0, session_data)  # 최신 항목이 맨 위에 오도록 추가
+                
+                # Supabase에 저장
+                try:
+                    # 에러 이력 저장
+                    error_result = add_error_history(error_data)
+                    if error_result:
+                        success_error = True
+                    
+                    # 부품 교체 이력 저장
+                    parts_result = add_parts_replacement(parts_data)
+                    if parts_result:
+                        success_parts = True
+                        
+                    if success_error and success_parts:
+                        st.success("Dữ liệu đã được lưu thành công vào cơ sở dữ liệu / 데이터가 데이터베이스에 성공적으로 저장되었습니다.")
+                    else:
+                        st.warning("Dữ liệu đã được lưu trong phiên hiện tại nhưng không lưu vào cơ sở dữ liệu / 데이터가 현재 세션에만 저장되었고 데이터베이스에는 저장되지 않았습니다.")
+                except Exception as e:
+                    st.warning(f"Lỗi khi lưu vào cơ sở dữ liệu: {str(e)} / 데이터베이스 저장 오류: {str(e)}")
+                    st.info("Dữ liệu đã được lưu trong phiên hiện tại / 데이터가 현재 세션에만 저장되었습니다.")
     
     # 입력 내역 표시
     if st.session_state.input_history:
