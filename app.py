@@ -7,6 +7,10 @@ from components.data_input import show_data_input
 from components.reports import show_reports
 from components.admin import show_admin_settings
 
+# Streamlit Cloud에서 환경 변수 가져오기
+ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin")
+
 # 페이지 설정
 st.set_page_config(
     page_title="Hệ thống quản lý thiết bị / 설비 관리 시스템",
@@ -142,7 +146,7 @@ if not st.session_state.logged_in:
                     <span class="label-text-kr">아이디</span>
                 </div>
             """, unsafe_allow_html=True)
-            username = st.text_input("", key="username_input")
+            username = st.text_input("", key="username_input", label_visibility="collapsed")
             
             st.markdown("""
                 <div class="label-text">
@@ -150,12 +154,12 @@ if not st.session_state.logged_in:
                     <span class="label-text-kr">비밀번호</span>
                 </div>
             """, unsafe_allow_html=True)
-            password = st.text_input("", type="password", key="password_input")
+            password = st.text_input("", type="password", key="password_input", label_visibility="collapsed")
             
             submit = st.form_submit_button("Đăng nhập / 로그인", use_container_width=True)
             
             if submit:
-                if username == "admin" and password == "admin":
+                if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.role = "admin"

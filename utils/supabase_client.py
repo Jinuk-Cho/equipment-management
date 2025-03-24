@@ -7,10 +7,27 @@ import streamlit as st
 load_dotenv()
 
 # Supabase 클라이언트 초기화
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_KEY")
-)
+def init_connection():
+    try:
+        supabase_url = st.secrets["SUPABASE_URL"]
+        supabase_key = st.secrets["SUPABASE_KEY"]
+        
+        if not supabase_url or not supabase_key:
+            st.error("Supabase 설정이 필요합니다.")
+            return None
+            
+        return create_client(supabase_url, supabase_key)
+    except Exception as e:
+        st.error(f"Supabase 연결 오류: {str(e)}")
+        return None
+
+# Supabase 클라이언트 초기화 (캐싱)
+@st.cache_resource
+def get_supabase():
+    return init_connection()
+
+# Supabase 클라이언트 인스턴스
+supabase = get_supabase()
 
 # 사용자 인증
 def sign_in_user(email, password):
@@ -108,72 +125,156 @@ def delete_data(table_name, match_column, match_value):
 
 # 설비 목록 관련 함수
 def get_equipment_list():
-    response = supabase.table('equipment_list').select("*").execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('equipment_list').select("*").execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def add_equipment(equipment_data):
-    response = supabase.table('equipment_list').insert(equipment_data).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_list').insert(equipment_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 추가 오류: {str(e)}")
+        return None
 
 def update_equipment(equipment_id, equipment_data):
-    response = supabase.table('equipment_list').update(equipment_data).eq('id', equipment_id).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_list').update(equipment_data).eq('id', equipment_id).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 수정 오류: {str(e)}")
+        return None
 
 # 에러 이력 관련 함수
 def get_error_history():
-    response = supabase.table('error_history').select("*").order('timestamp', desc=True).execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('error_history').select("*").order('timestamp', desc=True).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def add_error_history(error_data):
-    response = supabase.table('error_history').insert(error_data).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('error_history').insert(error_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 추가 오류: {str(e)}")
+        return None
 
 # 부품 교체 관련 함수
 def get_parts_replacement():
-    response = supabase.table('parts_replacement').select("*").order('timestamp', desc=True).execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('parts_replacement').select("*").order('timestamp', desc=True).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def add_parts_replacement(parts_data):
-    response = supabase.table('parts_replacement').insert(parts_data).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('parts_replacement').insert(parts_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 추가 오류: {str(e)}")
+        return None
 
 # 에러 코드 관련 함수
 def get_error_codes():
-    response = supabase.table('error_codes').select("*").execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('error_codes').select("*").execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def add_error_code(error_code_data):
-    response = supabase.table('error_codes').insert(error_code_data).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('error_codes').insert(error_code_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 추가 오류: {str(e)}")
+        return None
 
 # 부품 목록 관련 함수
 def get_parts_list():
-    response = supabase.table('parts_list').select("*").execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('parts_list').select("*").execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def add_part(part_data):
-    response = supabase.table('parts_list').insert(part_data).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('parts_list').insert(part_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 추가 오류: {str(e)}")
+        return None
 
 def update_part_stock(part_id, new_stock):
-    response = supabase.table('parts_list').update({'stock': new_stock}).eq('id', part_id).execute()
-    return response.data
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('parts_list').update({'stock': new_stock}).eq('id', part_id).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 수정 오류: {str(e)}")
+        return None
 
 # 통계 관련 함수
 def get_error_stats(start_date=None, end_date=None):
-    query = supabase.table('error_history').select("*")
-    if start_date:
-        query = query.gte('timestamp', start_date)
-    if end_date:
-        query = query.lte('timestamp', end_date)
-    response = query.execute()
-    return response.data
+    if not supabase:
+        return []
+    try:
+        query = supabase.table('error_history').select("*")
+        if start_date:
+            query = query.gte('timestamp', start_date)
+        if end_date:
+            query = query.lte('timestamp', end_date)
+        response = query.execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return []
 
 def get_parts_stats(start_date=None, end_date=None):
-    query = supabase.table('parts_replacement').select("*")
-    if start_date:
-        query = query.gte('timestamp', start_date)
-    if end_date:
-        query = query.lte('timestamp', end_date)
-    response = query.execute()
-    return response.data 
+    if not supabase:
+        return []
+    try:
+        query = supabase.table('parts_replacement').select("*")
+        if start_date:
+            query = query.gte('timestamp', start_date)
+        if end_date:
+            query = query.lte('timestamp', end_date)
+        response = query.execute()
+        return response.data
+    except Exception as e:
+        st.error(f"데이터 조회 오류: {str(e)}")
+        return [] 
