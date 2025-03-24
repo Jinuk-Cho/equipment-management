@@ -30,26 +30,16 @@ st.markdown("""
         .stButton>button {
             width: 100%;
         }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 1rem;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            padding: 0 1rem;
-        }
-        .stTabs [data-baseweb="tab-list"] button {
-            padding: 0 1rem;
-        }
         /* 사이드바 스타일 */
-        .css-1d391kg {
-            padding-top: 1rem;
-        }
-        .css-1d391kg > div {
-            width: 200px !important;
+        [data-testid="stSidebar"] {
+            background-color: #f8f9fa;
+            min-width: 200px !important;
+            max-width: 250px !important;
         }
         /* 메인 컨텐츠 영역 */
         .main .block-container {
-            padding-left: 220px;
+            padding-left: 20px;
+            padding-right: 20px;
         }
         /* 제목 스타일 */
         .system-title {
@@ -90,6 +80,25 @@ st.markdown("""
             color: #2563EB;
             margin-left: 0.3rem;
         }
+        /* 메뉴 탭 스타일 */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 1rem;
+            margin-bottom: 1rem;
+            background-color: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            padding: 0 1rem;
+            font-weight: bold;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #e2e8f0;
+        }
+        .stTabs [data-baseweb="tab-highlight"] {
+            background-color: #2563EB;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -104,6 +113,8 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 if 'role' not in st.session_state:
     st.session_state.role = None
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "dashboard"
 
 # 세션 만료 체크 (12시간)
 def check_session_expiry():
@@ -146,7 +157,7 @@ if not st.session_state.logged_in:
                     <span class="label-text-kr">아이디</span>
                 </div>
             """, unsafe_allow_html=True)
-            username = st.text_input("", key="username_input", label_visibility="collapsed")
+            username = st.text_input("username_label", label_visibility="collapsed", key="username_input")
             
             st.markdown("""
                 <div class="label-text">
@@ -154,7 +165,7 @@ if not st.session_state.logged_in:
                     <span class="label-text-kr">비밀번호</span>
                 </div>
             """, unsafe_allow_html=True)
-            password = st.text_input("", type="password", key="password_input", label_visibility="collapsed")
+            password = st.text_input("password_label", type="password", label_visibility="collapsed", key="password_input")
             
             submit = st.form_submit_button("Đăng nhập / 로그인", use_container_width=True)
             
@@ -172,7 +183,7 @@ if not st.session_state.logged_in:
 
 # 메인 애플리케이션
 else:
-    # 사이드바
+    # 사이드바 - 최소화된 사용자 정보만 표시
     with st.sidebar:
         st.markdown("""
             <div class="system-title">
@@ -212,55 +223,35 @@ else:
             st.session_state.login_time = None
             st.session_state.session_expiry = None
             st.rerun()
-        
-        st.divider()
-        
-        # 메뉴 옵션 정의
-        menu_options = {
-            "dashboard": {
-                "vn": "Bảng điều khiển",
-                "kr": "대시보드"
-            },
-            "equipment": {
-                "vn": "Chi tiết thiết bị",
-                "kr": "설비 상세"
-            },
-            "data": {
-                "vn": "Nhập dữ liệu",
-                "kr": "데이터 입력"
-            },
-            "report": {
-                "vn": "Báo cáo",
-                "kr": "보고서"
-            },
-            "admin": {
-                "vn": "Cài đặt quản trị",
-                "kr": "관리자 설정"
-            }
-        }
-        
-        st.markdown("""
-            <div class="menu-item">
-                <div class="menu-item-vn">Menu</div>
-                <div class="menu-item-kr">메뉴 선택</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        menu_items = [f"{v['vn']}\n{v['kr']}" for v in menu_options.values()]
-        menu = st.radio("", menu_items, label_visibility="collapsed")
-        
-        # 메뉴 선택에 따른 컨텐츠 표시
-        selected_menu = menu.split('\n')[0]  # 베트남어 부분으로 메뉴 식별
-        
-        if selected_menu == menu_options['dashboard']['vn']:
-            show_dashboard()
-        elif selected_menu == menu_options['equipment']['vn']:
-            show_equipment_detail()
-        elif selected_menu == menu_options['data']['vn']:
-            show_data_input()
-        elif selected_menu == menu_options['report']['vn']:
-            show_reports()
-        elif selected_menu == menu_options['admin']['vn'] and st.session_state.role == 'admin':
+    
+    # 메인 컨텐츠 영역 - 상단에 메뉴 탭 표시
+    st.markdown("""
+        <div class="system-title">
+            <div class="system-title-vn">Hệ thống quản lý thiết bị</div>
+            <div class="system-title-kr">설비 관리 시스템</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 탭 메뉴를 메인 컨텐츠의 최상단에 명확하게 표시
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Bảng điều khiển / 대시보드",
+        "Chi tiết thiết bị / 설비 상세",
+        "Nhập dữ liệu / 데이터 입력",
+        "Báo cáo / 보고서",
+        "Cài đặt quản trị / 관리자 설정"
+    ])
+    
+    # 각 탭의 컨텐츠
+    with tab1:
+        show_dashboard()
+    with tab2:
+        show_equipment_detail()
+    with tab3:
+        show_data_input()
+    with tab4:
+        show_reports()
+    with tab5:
+        if st.session_state.role == 'admin':
             show_admin_settings()
-        elif selected_menu == menu_options['admin']['vn']:
+        else:
             st.error("Yêu cầu quyền quản trị viên / 관리자 권한이 필요합니다.")
