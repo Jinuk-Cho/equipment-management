@@ -1,9 +1,9 @@
-streamlit==1.31.1
-pandas==2.2.0
-plotly==5.18.0
+streamlit==1.32.0
+pandas==2.2.1
+plotly==5.19.0
 google-auth-oauthlib==1.2.0
 google-auth==2.27.0
 google-api-python-client==2.118.0
 numpy==1.26.3
-supabase==1.0.3
+supabase==2.3.4
 python-dotenv==1.0.1 

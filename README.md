@@ -1,61 +1,40 @@
 # 설비 관리 시스템
 
-설비 고장 분석 및 관리를 위한 웹 기반 대시보드 시스템입니다.
+설비의 상태를 모니터링하고 관리하는 웹 기반 시스템입니다.
 
 ## 주요 기능
 
-1. **로그인 및 권한 관리**
-   - ID/PW 로그인
-   - Google 계정 연동
-   - 사용자 권한 관리 (관리자, 리더, 일반 직원)
+- 실시간 설비 상태 모니터링
+- 설비 고장 이력 관리
+- 부품 교체 이력 관리
+- 통계 및 보고서 생성
+- 관리자 설정
 
-2. **실시간 대시보드**
-   - 설비 상태 요약
-   - 현재 고장 장비 리스트
-   - 교체 부품 및 작업 내역
-   - 시간별 오류 발생 트렌드
-   - 구역별 장비 현황
-   - 필터 & 검색 기능
+## 시스템 요구사항
 
-3. **장비 상세 조회**
-   - 장비별 상세 정보
-   - 과거 오류 내역
-   - 부품 교체 이력
-   - 예방 점검 일정
-
-4. **데이터 입력 (모바일 최적화)**
-   - 작업 정보 입력
-   - QR 코드 스캔 기능
-   - 실시간 데이터 동기화
-
-5. **보고서 및 통계**
-   - 고장 유형 분석
-   - 부품 소모 현황
-   - 작업자별 통계
-   - 다운타임 분석
-
-6. **관리자 설정**
-   - 사용자 관리
-   - 설비 목록 관리
-   - 오류 코드 관리
-   - 부품 리스트 관리
+- Python 3.8 이상
+- Streamlit
+- Supabase
 
 ## 설치 방법
 
-1. 필요한 패키지 설치:
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. 저장소 클론
+```bash
+git clone https://github.com/Jinuk-Cho/equipment-management.git
+cd equipment-management
+```
 
-2. Google Sheets API 설정:
-   - Google Cloud Console에서 프로젝트 생성
-   - Google Sheets API 활성화
-   - 서비스 계정 생성 및 키 파일 다운로드
-   - 키 파일을 `config/client_secrets.json`에 저장
+2. 필요한 패키지 설치
+```bash
+pip install -r requirements.txt
+```
 
-3. 환경 변수 설정:
-   - `.streamlit/secrets.toml` 파일 생성
-   - Google Sheets 스프레드시트 ID 설정
+3. 환경 변수 설정
+`.env` 파일을 생성하고 Supabase 연결 정보를 입력:
+```
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+```
 
 ## 실행 방법
 
@@ -63,25 +42,71 @@
 streamlit run app.py
 ```
 
-## 데이터 구조
+웹 브라우저에서 자동으로 애플리케이션이 열립니다. (기본 주소: http://localhost:8501)
 
-구글 스프레드시트에 다음과 같은 시트들이 필요합니다:
+## 로그인 정보
 
-1. 설비목록
-2. 오류이력
-3. 부품교체
-4. 예방점검
-5. 오류코드
-6. 부품목록
+- 아이디: admin
+- 비밀번호: admin
 
-## 기여 방법
+## 세션 관리
 
-1. Fork the Project
-2. Create your Feature Branch
-3. Commit your Changes
-4. Push to the Branch
-5. Open a Pull Request
+- 로그인 세션 유지 시간: 12시간
+- 브라우저 새로고침 후에도 세션 유지
+- 세션 만료 시 자동 로그아웃
+
+## 주요 구성 요소
+
+- `app.py`: 메인 애플리케이션
+- `components/`: 각 기능별 컴포넌트
+  - `dashboard.py`: 대시보드
+  - `equipment_detail.py`: 설비 상세 정보
+  - `data_input.py`: 데이터 입력
+  - `reports.py`: 보고서
+  - `admin.py`: 관리자 설정
+
+## 데이터베이스 구조
+
+### 테이블 구조
+
+1. equipment_list (설비 목록)
+   - id
+   - equipment_number (설비번호)
+   - building (건물)
+   - equipment_type (설비유형)
+   - status (상태)
+
+2. error_history (고장 이력)
+   - id
+   - timestamp (발생시간)
+   - equipment_number (설비번호)
+   - error_code (에러코드)
+   - error_detail (에러상세)
+   - repair_time (수리시간)
+   - repair_method (수리방법)
+   - worker (작업자)
+   - supervisor (관리자)
+
+3. parts_replacement (부품 교체)
+   - id
+   - timestamp (교체시간)
+   - equipment_number (설비번호)
+   - part_code (부품코드)
+   - worker (작업자)
+   - supervisor (관리자)
+
+4. error_codes (에러 코드)
+   - id
+   - error_code (에러코드)
+   - description (설명)
+   - error_type (에러유형)
+
+5. parts_list (부품 목록)
+   - id
+   - part_code (부품코드)
+   - part_name (부품명)
+   - stock (재고)
 
 ## 라이선스
 
-이 프로젝트는 MIT 라이선스를 따릅니다. 
+MIT License 
