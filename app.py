@@ -13,6 +13,8 @@ from components.language import get_text
 # Streamlit Cloud에서 환경 변수 가져오기
 ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin")
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "your_supabase_url")
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "your_supabase_key")
 
 # 페이지 설정
 st.set_page_config(
@@ -98,6 +100,10 @@ st.markdown("""
             display: flex;
             justify-content: flex-end;
         }
+        /* 숨김 처리 */
+        .hidden {
+            display: none;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -180,17 +186,15 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 숨겨진 버튼으로 JavaScript 클릭 이벤트 처리
-if st.button("대시보드", key="dashboard_btn", on_click=change_page, args=('dashboard',), help="대시보드로 이동", visible=False):
-    pass
-if st.button("설비 상세", key="equipment_btn", on_click=change_page, args=('equipment_detail',), help="설비 상세로 이동", visible=False):
-    pass
-if st.button("데이터 입력", key="data_input_btn", on_click=change_page, args=('data_input',), help="데이터 입력으로 이동", visible=False):
-    pass
-if st.button("보고서", key="reports_btn", on_click=change_page, args=('reports',), help="보고서로 이동", visible=False):
-    pass
-if st.button("관리자 설정", key="admin_btn", on_click=change_page, args=('admin_settings',), help="관리자 설정으로 이동", visible=False):
-    pass
+# 숨겨진 컨테이너에 버튼 배치 (Streamlit Cloud 지원을 위한 수정)
+with st.container():
+    st.markdown('<div class="hidden">', unsafe_allow_html=True)
+    dashboard_btn = st.button("대시보드", key="dashboard_btn", on_click=change_page, args=('dashboard',), help="대시보드로 이동")
+    equipment_btn = st.button("설비 상세", key="equipment_btn", on_click=change_page, args=('equipment_detail',), help="설비 상세로 이동")
+    data_input_btn = st.button("데이터 입력", key="data_input_btn", on_click=change_page, args=('data_input',), help="데이터 입력으로 이동")
+    reports_btn = st.button("보고서", key="reports_btn", on_click=change_page, args=('reports',), help="보고서로 이동")
+    admin_btn = st.button("관리자 설정", key="admin_btn", on_click=change_page, args=('admin_settings',), help="관리자 설정으로 이동")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 컨텐츠 표시
 if current_page == 'dashboard':
