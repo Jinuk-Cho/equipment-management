@@ -63,7 +63,12 @@ st.markdown("""
         }
         /* 언어 선택 버튼 */
         .language-selector {
-            width: 120px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .language-button {
+            min-width: 100px;
         }
         /* 메뉴 바 */
         .menu-bar {
@@ -100,10 +105,6 @@ st.markdown("""
             display: flex;
             justify-content: flex-end;
         }
-        /* 숨김 처리 */
-        .hidden {
-            display: none;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -123,20 +124,15 @@ if 'language' not in st.session_state:
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'dashboard'
 
-def toggle_language():
-    """언어 설정을 변경합니다."""
-    if st.session_state.language == 'ko':
-        st.session_state.language = 'vi'
-    else:
-        st.session_state.language = 'ko'
-    st.rerun()
+# 언어 변경 함수
+def set_language(lang):
+    st.session_state.language = lang
 
-def change_page(page):
-    """페이지를 변경합니다."""
+# 페이지 변경 함수
+def set_page(page):
     st.session_state.current_page = page
-    st.rerun()
 
-# 현재 선택된 언어
+# 현재 선택된 언어와 페이지
 current_lang = st.session_state.language
 current_page = st.session_state.current_page
 
@@ -156,45 +152,52 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
-    # 언어 선택 버튼
-    language_display = "한국어" if current_lang == 'ko' else "Tiếng Việt"
-    st.button(language_display, key="language_button", on_click=toggle_language, help="언어 변경 / Thay đổi ngôn ngữ", use_container_width=True)
+    # 언어 선택 버튼 - 두 개의 버튼으로 변경
+    lang_col1, lang_col2 = st.columns(2)
+    with lang_col1:
+        ko_clicked = st.button("한국어", key="ko_button", help="한국어로 변경", use_container_width=True, 
+                              type="primary" if current_lang == 'ko' else "secondary")
+        if ko_clicked:
+            set_language('ko')
+            st.rerun()
+    with lang_col2:
+        vi_clicked = st.button("Tiếng Việt", key="vi_button", help="베트남어로 변경", use_container_width=True,
+                              type="primary" if current_lang == 'vi' else "secondary")
+        if vi_clicked:
+            set_language('vi')
+            st.rerun()
 
-# 메뉴 바
-st.markdown(f"""
-    <div class="menu-bar">
-        <div class="menu-item {'active' if current_page == 'dashboard' else ''}" 
-             onclick="parent.postMessage({{command: 'streamlitClick', target: 'dashboard_btn'}}, '*')">
-            {get_text("dashboard", current_lang)}
-        </div>
-        <div class="menu-item {'active' if current_page == 'equipment_detail' else ''}" 
-             onclick="parent.postMessage({{command: 'streamlitClick', target: 'equipment_btn'}}, '*')">
-            {get_text("equipment_detail", current_lang)}
-        </div>
-        <div class="menu-item {'active' if current_page == 'data_input' else ''}" 
-             onclick="parent.postMessage({{command: 'streamlitClick', target: 'data_input_btn'}}, '*')">
-            {get_text("data_input", current_lang)}
-        </div>
-        <div class="menu-item {'active' if current_page == 'reports' else ''}" 
-             onclick="parent.postMessage({{command: 'streamlitClick', target: 'reports_btn'}}, '*')">
-            {get_text("reports", current_lang)}
-        </div>
-        <div class="menu-item {'active' if current_page == 'admin_settings' else ''}" 
-             onclick="parent.postMessage({{command: 'streamlitClick', target: 'admin_btn'}}, '*')">
-            {get_text("admin_settings", current_lang)}
-        </div>
-    </div>
-""", unsafe_allow_html=True)
+# 메뉴 바 - JavaScript 클릭 이벤트 제거하고 직접 버튼으로 구현
+menu_cols = st.columns(5)
+with menu_cols[0]:
+    if st.button(get_text("dashboard", current_lang), key="menu_dashboard", 
+                type="primary" if current_page == 'dashboard' else "secondary", use_container_width=True):
+        set_page('dashboard')
+        st.rerun()
 
-# 숨겨진 컨테이너에 버튼 배치 (Streamlit Cloud 지원을 위한 수정)
-with st.container():
-    st.markdown('<div class="hidden">', unsafe_allow_html=True)
-    dashboard_btn = st.button("대시보드", key="dashboard_btn", on_click=change_page, args=('dashboard',), help="대시보드로 이동")
-    equipment_btn = st.button("설비 상세", key="equipment_btn", on_click=change_page, args=('equipment_detail',), help="설비 상세로 이동")
-    data_input_btn = st.button("데이터 입력", key="data_input_btn", on_click=change_page, args=('data_input',), help="데이터 입력으로 이동")
-    reports_btn = st.button("보고서", key="reports_btn", on_click=change_page, args=('reports',), help="보고서로 이동")
-    admin_btn = st.button("관리자 설정", key="admin_btn", on_click=change_page, args=('admin_settings',), help="관리자 설정으로 이동")
-    st.markdown('</div>', unsafe_allow_html=True)
+with menu_cols[1]:
+    if st.button(get_text("equipment_detail", current_lang), key="menu_equipment", 
+                type="primary" if current_page == 'equipment_detail' else "secondary", use_container_width=True):
+        set_page('equipment_detail')
+        st.rerun()
+
+with menu_cols[2]:
+    if st.button(get_text("data_input", current_lang), key="menu_data_input", 
+                type="primary" if current_page == 'data_input' else "secondary", use_container_width=True):
+        set_page('data_input')
+        st.rerun()
+
+with menu_cols[3]:
+    if st.button(get_text("reports", current_lang), key="menu_reports", 
+                type="primary" if current_page == 'reports' else "secondary", use_container_width=True):
+        set_page('reports')
+        st.rerun()
+
+with menu_cols[4]:
+    if st.button(get_text("admin_settings", current_lang), key="menu_admin", 
+                type="primary" if current_page == 'admin_settings' else "secondary", use_container_width=True):
+        set_page('admin_settings')
+        st.rerun()
 
 # 컨텐츠 표시
 if current_page == 'dashboard':
