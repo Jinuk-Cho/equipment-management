@@ -11,7 +11,7 @@ st.set_page_config(
     page_title="설비 관리 시스템",
     page_icon="🏭",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # CSS 스타일 적용
@@ -35,6 +35,17 @@ st.markdown("""
         .stTabs [data-baseweb="tab-list"] button {
             padding: 0 1rem;
         }
+        /* 사이드바 스타일 */
+        .css-1d391kg {
+            padding-top: 1rem;
+        }
+        .css-1d391kg > div {
+            width: 200px !important;
+        }
+        /* 메인 컨텐츠 영역 */
+        .main .block-container {
+            padding-left: 220px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -50,46 +61,34 @@ if not st.session_state.user:
         st.title("설비 관리 시스템")
         st.markdown("---")
         
-        tabs = st.tabs(["로그인", "회원가입"])
-        
-        with tabs[0]:
-            st.subheader("로그인")
-            email = st.text_input("이메일", key="login_email")
-            password = st.text_input("비밀번호", type="password", key="login_password")
-            st.markdown("---")
-            if st.button("로그인", key="login_button", use_container_width=True):
-                if email and password:  # 입력값 검증
-                    if email == "admin@example.com" and password == "admin123456":
+        # 로그인 폼
+        st.subheader("로그인")
+        with st.form("login_form", clear_on_submit=False):
+            email = st.text_input("아이디", key="login_email", autocomplete="username")
+            password = st.text_input("비밀번호", type="password", key="login_password", autocomplete="current-password")
+            submitted = st.form_submit_button("로그인")
+            
+            if submitted:
+                if email and password:
+                    if email == "admin" and password == "admin123":
                         st.session_state.user = {"email": email, "role": "admin"}
                         st.success("로그인 성공!")
                         st.rerun()
                     else:
-                        user = sign_in_user(email, password)
-                        if user:
-                            st.session_state.user = user
-                            st.success("로그인 성공!")
-                            st.rerun()
+                        st.error("아이디 또는 비밀번호가 일치하지 않습니다.")
                 else:
-                    st.error("이메일과 비밀번호를 입력해주세요.")
+                    st.error("아이디와 비밀번호를 입력해주세요.")
         
-        with tabs[1]:
-            st.subheader("회원가입")
-            new_email = st.text_input("이메일", key="signup_email")
-            new_password = st.text_input("비밀번호", type="password", key="signup_password")
-            confirm_password = st.text_input("비밀번호 확인", type="password", key="confirm_password")
-            st.markdown("---")
-            if st.button("회원가입", key="signup_button", use_container_width=True):
-                if new_email and new_password and confirm_password:  # 입력값 검증
-                    if len(new_password) < 6:
-                        st.error("비밀번호는 6자 이상이어야 합니다.")
-                    elif new_password != confirm_password:
-                        st.error("비밀번호가 일치하지 않습니다.")
-                    else:
-                        user = sign_up_user(new_email, new_password)
-                        if user:
-                            st.success("회원가입 성공! 로그인해주세요.")
+        # 관리자 전용 회원가입
+        if st.button("관리자 전용 회원가입", key="admin_signup_button"):
+            st.warning("관리자 권한이 필요합니다.")
+            admin_email = st.text_input("관리자 이메일", key="admin_email")
+            admin_password = st.text_input("관리자 비밀번호", type="password", key="admin_password")
+            if st.button("관리자 계정 생성", key="create_admin_button"):
+                if len(admin_password) >= 5:
+                    st.success("관리자 계정이 생성되었습니다.")
                 else:
-                    st.error("모든 필드를 입력해주세요.")
+                    st.error("비밀번호는 5자 이상이어야 합니다.")
 
 # 메인 애플리케이션
 else:
