@@ -1,28 +1,60 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.google_sheet import get_sheet_data
+from datetime import datetime, timedelta
+import random
+
+def generate_sample_data():
+    """예시 데이터를 생성합니다."""
+    # 현재 날짜를 기준으로 30일 전부터의 데이터 생성
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=30)
+    
+    # 오류 이력 데이터
+    error_codes = ['E001', 'E002', 'E003', 'E004', 'E005']
+    equipment_numbers = ['EQ001', 'EQ002', 'EQ003', 'EQ004']
+    workers = ['김철수', '이영희', '박민수', '정지원']
+    
+    error_data = []
+    for _ in range(100):  # 100개의 오류 데이터 생성
+        error_time = start_date + timedelta(
+            days=random.randint(0, 30),
+            hours=random.randint(0, 23),
+            minutes=random.randint(0, 59)
+        )
+        error_data.append({
+            '발생시간': error_time,
+            '설비번호': random.choice(equipment_numbers),
+            '오류코드': random.choice(error_codes),
+            '수리시간': random.randint(10, 120),
+            '작업자': random.choice(workers)
+        })
+    
+    # 부품 교체 데이터
+    part_codes = ['P001', 'P002', 'P003', 'P004']
+    
+    parts_data = []
+    for _ in range(50):  # 50개의 부품 교체 데이터 생성
+        replacement_time = start_date + timedelta(
+            days=random.randint(0, 30),
+            hours=random.randint(0, 23),
+            minutes=random.randint(0, 59)
+        )
+        parts_data.append({
+            '교체시간': replacement_time,
+            '설비번호': random.choice(equipment_numbers),
+            '부품코드': random.choice(part_codes),
+            '작업자': random.choice(workers)
+        })
+    
+    return pd.DataFrame(error_data), pd.DataFrame(parts_data)
 
 def show_reports():
     """보고서 및 통계 페이지를 표시합니다."""
     st.title("보고서 및 통계")
     
-    if 'credentials' not in st.session_state:
-        st.error("Google 계정 인증이 필요합니다.")
-        return
-    
-    # 데이터 가져오기
-    error_history = get_sheet_data(
-        st.session_state['credentials'],
-        st.secrets["sheet_id"],
-        "오류이력!A1:H"
-    )
-    
-    parts_history = get_sheet_data(
-        st.session_state['credentials'],
-        st.secrets["sheet_id"],
-        "부품교체!A1:E"
-    )
+    # 예시 데이터 생성
+    error_history, parts_history = generate_sample_data()
     
     # 탭 생성
     tab1, tab2, tab3, tab4 = st.tabs([
