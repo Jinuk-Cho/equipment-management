@@ -41,14 +41,19 @@ def get_supabase():
 supabase = get_supabase()
 
 # 사용자 인증
-def sign_in_user(email, password):
+def sign_in_user(username, password):
     # 관리자 계정 하드코딩 인증 처리
-    if email == "admin" and password == "admin":
+    if username == "admin" and password == "admin":
         # 관리자 계정에 대한 임시 응답 객체 생성
         class AdminUser:
             def __init__(self):
                 self.id = "admin-user-id"
-                self.email = "admin@example.com"
+                self.user_metadata = {
+                    "name": "관리자",
+                    "role": "admin",
+                    "department": "관리부서",
+                    "phone": "010-0000-0000"
+                }
                 self.role = "admin"
                 
         admin_user = AdminUser()
@@ -60,8 +65,9 @@ def sign_in_user(email, password):
         return None
     
     try:
+        # 일반 사용자는 이메일과 비밀번호로 인증
         response = supabase.auth.sign_in_with_password({
-            "email": email,
+            "email": username,  # username을 email로 간주
             "password": password,
             "options": {
                 "emailRedirectTo": "http://localhost:8506"

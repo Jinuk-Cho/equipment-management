@@ -322,21 +322,20 @@ if not st.session_state.logged_in:
             # 로그인 폼
             with st.form("login_form", clear_on_submit=False):
                 st.markdown(f"<h3 class='login-title'>{get_text('login', current_lang)}</h3>", unsafe_allow_html=True)
-                email = st.text_input(get_text('email', current_lang), placeholder="user@example.com")
+                username = st.text_input(get_text('username', current_lang), placeholder="admin")
                 password = st.text_input(get_text('password', current_lang), type="password")
                 submit = st.form_submit_button(get_text('login', current_lang), use_container_width=True, type="primary")
                 
                 if submit:
-                    if not email or not password:
+                    if not username or not password:
                         st.error(get_text('fill_all_fields', current_lang))
                     else:
                         # Supabase로 로그인 시도
-                        user = sign_in_user(email, password)
+                        user = sign_in_user(username, password)
                         if user:
                             # 사용자 정보를 Supabase에서 가져오기
                             if user.id == "admin-user-id":  # 하드코딩된 관리자 계정인 경우
                                 st.session_state.user_id = user.id
-                                st.session_state.email = user.email
                                 st.session_state.username = "관리자"
                                 st.session_state.role = "admin"
                                 st.session_state.department = "관리부서"
