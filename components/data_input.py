@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import json
-from utils.supabase_client import add_error_history, add_parts_replacement
+from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number
 from components.language import get_text
 from PIL import Image
 import io
@@ -130,17 +130,25 @@ def get_input_text(key, lang):
         return DATA_INPUT_TEXTS[key].get(lang, DATA_INPUT_TEXTS[key]['ko'])
     return f"[{key}]"
 
-# 설비 번호와 시리얼 번호 매핑 (800대 시리얼 번호)
-# 실제 데이터에 맞게 수정 필요
-EQUIPMENT_SERIAL_MAPPING = {}
+# 설비 번호와 시리얼 번호 매핑 - 기본 백업용 매핑
+# 데이터베이스 연결이 실패한 경우 사용됨
+DEFAULT_EQUIPMENT_SERIAL_MAPPING = {}
 
 # 800대 설비에 대한 시리얼 번호 매핑 자동 생성
 for i in range(1, 801):
-    EQUIPMENT_SERIAL_MAPPING[i] = f"800-{i:03d}"
+    DEFAULT_EQUIPMENT_SERIAL_MAPPING[i] = f"800-{i:03d}"
 
 def get_serial_number(equipment_number):
-    """설비 번호에 해당하는 시리얼 번호를 반환합니다."""
-    return EQUIPMENT_SERIAL_MAPPING.get(equipment_number, None)
+    """설비 번호에 해당하는 시리얼 번호를 반환합니다.
+    먼저 데이터베이스에서 조회하고, 없으면 기본 매핑에서 가져옵니다."""
+    
+    # 1. 데이터베이스에서 시리얼 번호 조회 시도
+    db_serial = get_serial_by_equipment_number(equipment_number)
+    if db_serial:
+        return db_serial
+    
+    # 2. 데이터베이스에서 찾지 못한 경우 기본 매핑 사용
+    return DEFAULT_EQUIPMENT_SERIAL_MAPPING.get(equipment_number, None)
 
 # 이미지 압축 함수
 def compress_image(file, max_size=1024, quality=85):
@@ -415,7 +423,7 @@ def get_equipment_from_supabase(equipment_number, serial_number=None):
     # TODO: 실제 Supabase 연동 코드로 대체 필요
     return {
         "equipment_number": f"EQ{equipment_number:03d}",
-        "serial_number": serial_number or EQUIPMENT_SERIAL_MAPPING.get(equipment_number, ""),
+        "serial_number": serial_number or DEFAULT_EQUIPMENT_SERIAL_MAPPING.get(equipment_number, ""),
         "equipment_type": "프레스" if equipment_number % 3 == 0 else "컨베이어" if equipment_number % 3 == 1 else "로봇",
         "building": f"{chr(65 + (equipment_number % 3))}동",
         "status": "정상" if equipment_number % 4 != 0 else "점검중"

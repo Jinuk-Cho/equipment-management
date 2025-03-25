@@ -307,4 +307,101 @@ def get_parts_stats(start_date=None, end_date=None):
         return response.data
     except Exception as e:
         st.error(f"데이터 조회 오류: {str(e)}")
-        return [] 
+        return []
+
+# 설비 시리얼 관련 함수
+def get_equipment_serials():
+    """
+    모든 설비 시리얼 번호 매핑을 가져옵니다.
+    """
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('equipment_serials').select("*").order('equipment_number').execute()
+        return response.data
+    except Exception as e:
+        st.error(f"설비 시리얼 조회 오류: {str(e)}")
+        return []
+
+def get_serial_by_equipment_number(equipment_number):
+    """
+    설비 번호로 시리얼 번호를 조회합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_serials')\
+            .select("serial_number")\
+            .eq('equipment_number', equipment_number)\
+            .execute()
+        
+        if response.data and len(response.data) > 0:
+            return response.data[0]['serial_number']
+        return None
+    except Exception as e:
+        st.error(f"시리얼 번호 조회 오류: {str(e)}")
+        return None
+
+def add_equipment_serial(equipment_number, serial_number):
+    """
+    새로운 설비-시리얼 매핑을 추가합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        data = {
+            'equipment_number': equipment_number,
+            'serial_number': serial_number
+        }
+        response = supabase.table('equipment_serials').insert(data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"시리얼 번호 추가 오류: {str(e)}")
+        return None
+
+def update_equipment_serial(equipment_number, serial_number):
+    """
+    기존 설비의 시리얼 번호를 업데이트합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        data = {'serial_number': serial_number}
+        response = supabase.table('equipment_serials')\
+            .update(data)\
+            .eq('equipment_number', equipment_number)\
+            .execute()
+        return response.data
+    except Exception as e:
+        st.error(f"시리얼 번호 업데이트 오류: {str(e)}")
+        return None
+
+def delete_equipment_serial(equipment_number):
+    """
+    설비-시리얼 매핑을 삭제합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_serials')\
+            .delete()\
+            .eq('equipment_number', equipment_number)\
+            .execute()
+        return response.data
+    except Exception as e:
+        st.error(f"시리얼 번호 삭제 오류: {str(e)}")
+        return None
+
+def bulk_upload_equipment_serials(serials_data):
+    """
+    여러 설비-시리얼 매핑을 한 번에 업로드합니다.
+    serials_data는 {'equipment_number': number, 'serial_number': 'serial'} 딕셔너리의 리스트여야 합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_serials').upsert(serials_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"시리얼 번호 일괄 업로드 오류: {str(e)}")
+        return None 
