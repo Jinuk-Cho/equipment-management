@@ -330,29 +330,47 @@ if not st.session_state.logged_in:
                     if not email or not password:
                         st.error(get_text('fill_all_fields', current_lang))
                     else:
-                        # Supabase 인증 사용
+                        # Supabase로 로그인 시도
                         user = sign_in_user(email, password)
                         if user:
-                            # 사용자 데이터 가져오기
-                            supabase = get_supabase()
-                            user_data = supabase.table('users').select('*').eq('id', user.id).execute().data
-                            
-                            if user_data:
-                                st.session_state.logged_in = True
-                                st.session_state.username = user.user_metadata.get('name', email.split('@')[0])
-                                st.session_state.email = email
-                                st.session_state.role = user.user_metadata.get('role', 'user')
-                                st.session_state.login_time = datetime.now()
-                                st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
-                                st.session_state.department = user.user_metadata.get('department', '')
-                                st.session_state.phone = user.user_metadata.get('phone', '')
+                            # 사용자 정보를 Supabase에서 가져오기
+                            if user.id == "admin-user-id":  # 하드코딩된 관리자 계정인 경우
                                 st.session_state.user_id = user.id
+                                st.session_state.email = user.email
+                                st.session_state.username = "관리자"
+                                st.session_state.role = "admin"
+                                st.session_state.department = "관리부서"
+                                st.session_state.phone = "010-0000-0000"
+                                st.session_state.logged_in = True
+                                st.session_state.login_time = datetime.now()
+                                st.session_state.session_expiry = datetime.now() + timedelta(hours=1)
                                 
-                                # 마지막 로그인 시간 업데이트
-                                update_data('users', {'last_login': datetime.now().isoformat()}, 'id', user.id)
+                                # 로그인 페이지에서 대시보드로 이동
+                                set_page('dashboard')
                                 st.rerun()
                             else:
-                                st.error(get_text('login_failed', current_lang))
+                                # 일반 사용자의 경우 기존 로직 사용
+                                supabase = get_supabase()
+                                # 사용자 데이터 가져오기
+                                users = fetch_data('users')
+                                if users:
+                                    user_data = next((u for u in users if u['id'] == user.id), None)
+                                    if user_data:
+                                        st.session_state.logged_in = True
+                                        st.session_state.username = user.user_metadata.get('name', email.split('@')[0])
+                                        st.session_state.email = email
+                                        st.session_state.role = user.user_metadata.get('role', 'user')
+                                        st.session_state.login_time = datetime.now()
+                                        st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
+                                        st.session_state.department = user.user_metadata.get('department', '')
+                                        st.session_state.phone = user.user_metadata.get('phone', '')
+                                        st.session_state.user_id = user.id
+                                        
+                                        # 마지막 로그인 시간 업데이트
+                                        update_data('users', {'last_login': datetime.now().isoformat()}, 'id', user.id)
+                                        st.rerun()
+                                    else:
+                                        st.error(get_text('login_failed', current_lang))
                         else:
                             st.error(get_text('login_failed', current_lang))
             

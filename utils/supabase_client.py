@@ -42,10 +42,6 @@ supabase = get_supabase()
 
 # 사용자 인증
 def sign_in_user(email, password):
-    if not supabase:
-        st.error("Supabase 설정이 필요합니다. .env 파일을 확인해주세요.")
-        return None
-    
     # 관리자 계정 하드코딩 인증 처리
     if email == "admin" and password == "admin":
         # 관리자 계정에 대한 임시 응답 객체 생성
@@ -57,6 +53,11 @@ def sign_in_user(email, password):
                 
         admin_user = AdminUser()
         return admin_user
+    
+    # 이 부분은 하드코딩된 관리자 계정이 아닌 경우에만 체크
+    if not supabase:
+        st.error("Supabase 설정이 필요합니다. .env 파일을 확인해주세요.")
+        return None
     
     try:
         response = supabase.auth.sign_in_with_password({
