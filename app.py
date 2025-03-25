@@ -366,9 +366,13 @@ if not st.session_state.logged_in:
             """, unsafe_allow_html=True)
             
             # 숨겨진 버튼
-            if st.button(get_text('create_new_account', current_lang), key="create_account_button", visible=False):
-                st.session_state.auth_view = 'register'
-                st.rerun()
+            hidden_container = st.container()
+            with hidden_container:
+                st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+                if st.button(get_text('create_new_account', current_lang), key="create_account_button"):
+                    st.session_state.auth_view = 'register'
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
         
         elif st.session_state.auth_view == 'register':
             # 회원가입 폼
@@ -433,9 +437,13 @@ if not st.session_state.logged_in:
             """, unsafe_allow_html=True)
             
             # 숨겨진 버튼
-            if st.button(get_text('login', current_lang), key="back_to_login_button", visible=False):
-                st.session_state.auth_view = 'login'
-                st.rerun()
+            hidden_login_container = st.container()
+            with hidden_login_container:
+                st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+                if st.button(get_text('login', current_lang), key="back_to_login_button"):
+                    st.session_state.auth_view = 'login'
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
     
     with col3:
         # 빈 공간
@@ -515,14 +523,22 @@ else:
                 """, unsafe_allow_html=True)
                 
                 # 숨겨진 프로필 버튼
-                if st.button(get_text('profile', current_lang), key="profile_button", help=get_text('profile', current_lang), visible=False):
-                    set_page('profile')
-                    st.rerun()
+                profile_container = st.container()
+                with profile_container:
+                    st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+                    if st.button(get_text('profile', current_lang), key="profile_button", help=get_text('profile', current_lang)):
+                        set_page('profile')
+                        st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
                 
                 # 숨겨진 로그아웃 버튼
-                if st.button(get_text('logout', current_lang), key="logout_button", help=get_text('logout_help', current_lang), visible=False):
-                    logout()
-                    st.rerun()
+                logout_container = st.container()
+                with logout_container:
+                    st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
+                    if st.button(get_text('logout', current_lang), key="logout_button", help=get_text('logout_help', current_lang)):
+                        logout()
+                        st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
                     
             with lang_col1:
                 ko_clicked = st.button("한국어", key="ko_button", help="한국어로 변경", use_container_width=True, 
