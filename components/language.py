@@ -22,6 +22,10 @@ TEXTS = {
         "ko": "로그아웃",
         "vi": "Đăng xuất"
     },
+    "logout_help": {
+        "ko": "로그아웃하기",
+        "vi": "Đăng xuất"
+    },
     "username": {
         "ko": "사용자",
         "vi": "Người dùng"
@@ -33,6 +37,94 @@ TEXTS = {
     "session_expires": {
         "ko": "세션 만료까지",
         "vi": "Thời gian còn lại"
+    },
+    "email": {
+        "ko": "이메일",
+        "vi": "Email"
+    },
+    "password": {
+        "ko": "비밀번호",
+        "vi": "Mật khẩu"
+    },
+    "confirm_password": {
+        "ko": "비밀번호 확인",
+        "vi": "Xác nhận mật khẩu"
+    },
+    "login_failed": {
+        "ko": "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.",
+        "vi": "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu."
+    },
+    "fill_all_fields": {
+        "ko": "모든 필드를 입력해주세요.",
+        "vi": "Vui lòng điền vào tất cả các trường."
+    },
+    "session_expired": {
+        "ko": "세션이 만료되었습니다. 다시 로그인해주세요.",
+        "vi": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+    },
+    "register": {
+        "ko": "회원가입",
+        "vi": "Đăng ký"
+    },
+    "register_success": {
+        "ko": "회원가입이 완료되었습니다. 로그인해주세요.",
+        "vi": "Đăng ký thành công. Vui lòng đăng nhập."
+    },
+    "register_failed": {
+        "ko": "회원가입에 실패했습니다. 다시 시도해주세요.",
+        "vi": "Đăng ký thất bại. Vui lòng thử lại."
+    },
+    "password_mismatch": {
+        "ko": "비밀번호가 일치하지 않습니다.",
+        "vi": "Mật khẩu không khớp."
+    },
+    "name": {
+        "ko": "이름",
+        "vi": "Tên"
+    },
+    "department": {
+        "ko": "부서",
+        "vi": "Phòng ban"
+    },
+    "role": {
+        "ko": "권한",
+        "vi": "Quyền hạn"
+    },
+    "admin": {
+        "ko": "관리자",
+        "vi": "Quản trị viên"
+    },
+    "user": {
+        "ko": "일반 사용자",
+        "vi": "Người dùng"
+    },
+    "phone": {
+        "ko": "전화번호",
+        "vi": "Số điện thoại"
+    },
+    "profile": {
+        "ko": "프로필",
+        "vi": "Hồ sơ"
+    },
+    "save": {
+        "ko": "저장",
+        "vi": "Lưu"
+    },
+    "cancel": {
+        "ko": "취소",
+        "vi": "Hủy"
+    },
+    "edit": {
+        "ko": "수정",
+        "vi": "Chỉnh sửa"
+    },
+    "delete": {
+        "ko": "삭제",
+        "vi": "Xóa"
+    },
+    "create_new_account": {
+        "ko": "새 계정 만들기",
+        "vi": "Tạo tài khoản mới"
     },
     
     # 탭 이름
@@ -129,6 +221,56 @@ TEXTS = {
     "admin_required": {
         "ko": "관리자 권한이 필요합니다.",
         "vi": "Yêu cầu quyền quản trị viên"
+    },
+    
+    # 사용자 관리
+    "user_management": {
+        "ko": "사용자 관리",
+        "vi": "Quản lý người dùng"
+    },
+    "user_list": {
+        "ko": "사용자 목록",
+        "vi": "Danh sách người dùng"
+    },
+    "add_user": {
+        "ko": "사용자 추가",
+        "vi": "Thêm người dùng"
+    },
+    "edit_user": {
+        "ko": "사용자 편집",
+        "vi": "Chỉnh sửa người dùng"
+    },
+    "delete_user": {
+        "ko": "사용자 삭제",
+        "vi": "Xóa người dùng"
+    },
+    "change_role": {
+        "ko": "권한 변경",
+        "vi": "Thay đổi quyền hạn"
+    },
+    "delete_confirm": {
+        "ko": "정말 삭제하시겠습니까?",
+        "vi": "Bạn có chắc chắn muốn xóa không?"
+    },
+    "user_deleted": {
+        "ko": "사용자가 삭제되었습니다.",
+        "vi": "Người dùng đã bị xóa."
+    },
+    "user_added": {
+        "ko": "사용자가 추가되었습니다.",
+        "vi": "Người dùng đã được thêm."
+    },
+    "user_updated": {
+        "ko": "사용자 정보가 업데이트되었습니다.",
+        "vi": "Thông tin người dùng đã được cập nhật."
+    },
+    "last_login": {
+        "ko": "마지막 로그인",
+        "vi": "Đăng nhập lần cuối"
+    },
+    "created_at": {
+        "ko": "생성일",
+        "vi": "Ngày tạo"
     }
 }
 

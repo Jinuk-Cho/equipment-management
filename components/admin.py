@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from components.language import get_text
+from components.language import get_text, get_admin_text
+from utils.supabase_client import get_supabase, fetch_data, sign_up_user, update_data, delete_data, insert_data
+
+# Supabase 클라이언트 가져오기
+supabase = get_supabase()
 
 # 관리자 설정 페이지 텍스트
 ADMIN_TEXTS = {
@@ -152,6 +156,54 @@ ADMIN_TEXTS = {
     "part_added": {
         "ko": "부품 가 추가되었습니다.",
         "vi": "Đã thêm linh kiện"
+    },
+    "add_user": {
+        "ko": "사용자 추가",
+        "vi": "Thêm người dùng"
+    },
+    "name": {
+        "ko": "이름",
+        "vi": "Tên"
+    },
+    "department": {
+        "ko": "부서",
+        "vi": "Phòng ban"
+    },
+    "phone": {
+        "ko": "전화번호",
+        "vi": "Số điện thoại"
+    },
+    "password": {
+        "ko": "비밀번호",
+        "vi": "Mật khẩu"
+    },
+    "confirm_password": {
+        "ko": "비밀번호 확인",
+        "vi": "Xác nhận mật khẩu"
+    },
+    "user_added": {
+        "ko": "사용자가 추가되었습니다.",
+        "vi": "Người dùng đã được thêm."
+    },
+    "user_deleted": {
+        "ko": "사용자가 삭제되었습니다.",
+        "vi": "Người dùng đã bị xóa."
+    },
+    "delete_user": {
+        "ko": "사용자 삭제",
+        "vi": "Xóa người dùng"
+    },
+    "delete_confirm": {
+        "ko": "정말 삭제하시겠습니까?",
+        "vi": "Bạn có chắc chắn muốn xóa không?"
+    },
+    "last_login": {
+        "ko": "마지막 로그인",
+        "vi": "Đăng nhập lần cuối"
+    },
+    "action": {
+        "ko": "작업",
+        "vi": "Thao tác"
     }
 }
 
@@ -160,6 +212,80 @@ def get_admin_text(key, lang):
     if key in ADMIN_TEXTS:
         return ADMIN_TEXTS[key].get(lang, ADMIN_TEXTS[key]['ko'])
     return f"[{key}]"
+
+# 사용자 목록 가져오기
+def get_users():
+    if not supabase:
+        return []
+    
+    try:
+        # Supabase의 users 테이블에서 사용자 정보 가져오기
+        response = supabase.table('users').select('*').execute()
+        return response.data
+    except Exception as e:
+        st.error(f"사용자 데이터 조회 실패: {str(e)}")
+        return []
+
+# 사용자 추가
+def add_user(name, email, password, department, phone, role="user"):
+    if not supabase:
+        return False
+    
+    try:
+        # 1. Supabase Auth로 사용자 등록
+        user = sign_up_user(email, password, role)
+        if user:
+            # 2. 사용자 메타데이터 추가 정보를 users 테이블에 저장
+            user_data = {
+                'id': user.id,
+                'email': email,
+                'name': name,
+                'role': role,
+                'department': department,
+                'phone': phone,
+                'created_at': datetime.now().isoformat(),
+                'last_login': None
+            }
+            insert_data('users', user_data)
+            return True
+        return False
+    except Exception as e:
+        st.error(f"사용자 추가 실패: {str(e)}")
+        return False
+
+# 사용자 권한 변경
+def change_user_role(user_id, new_role):
+    if not supabase:
+        return False
+    
+    try:
+        # 사용자 권한 변경
+        update_data('users', {'role': new_role}, 'id', user_id)
+        
+        # Auth 사용자 메타데이터 업데이트
+        supabase.auth.admin.update_user_by_id(user_id, {
+            "user_metadata": {"role": new_role}
+        })
+        return True
+    except Exception as e:
+        st.error(f"사용자 권한 변경 실패: {str(e)}")
+        return False
+
+# 사용자 삭제
+def delete_user(user_id):
+    if not supabase:
+        return False
+    
+    try:
+        # 1. 사용자 테이블에서 삭제
+        delete_data('users', 'id', user_id)
+        
+        # 2. Auth에서 사용자 삭제
+        supabase.auth.admin.delete_user(user_id)
+        return True
+    except Exception as e:
+        st.error(f"사용자 삭제 실패: {str(e)}")
+        return False
 
 def show_admin_settings(lang='ko'):
     """관리자 설정 페이지를 표시합니다."""
@@ -180,34 +306,127 @@ def show_admin_settings(lang='ko'):
     # 사용자 관리
     with tab1:
         st.subheader(get_admin_text("user_list", lang))
-        users_data = {
-            'email': ['user1@example.com', 'user2@example.com', 'admin@example.com'],
-            'role': ['user', 'user', 'admin'],
-            'created_at': [
-                datetime.now(),
-                datetime.now(),
-                datetime.now()
-            ]
-        }
-        df_users = pd.DataFrame(users_data)
-        st.dataframe(
-            df_users,
-            column_config={
-                "email": get_admin_text("email", lang),
-                "role": get_admin_text("role", lang),
-                "created_at": st.column_config.DatetimeColumn(
-                    get_admin_text("creation_date", lang),
-                    format="YYYY-MM-DD HH:mm"
-                )
-            }
-        )
         
-        with st.form("user_role_form"):
-            st.subheader(get_admin_text("change_user_role", lang))
-            email = st.selectbox(get_admin_text("select_user", lang), options=df_users['email'].tolist())
-            role = st.selectbox(get_admin_text("new_role", lang), options=['user', 'admin'])
-            if st.form_submit_button(get_admin_text("change_role", lang)):
-                st.success(f"{email} {get_admin_text('role_changed', lang)} {role}")
+        # 사용자 목록 조회
+        users = get_users()
+        
+        if users:
+            # 데이터프레임 생성
+            df_users = pd.DataFrame(users)
+            
+            # 액션 컬럼 추가를 위한 빈 열 추가
+            df_users['action'] = ''
+            
+            # 데이터프레임 표시
+            edited_df = st.data_editor(
+                df_users,
+                column_config={
+                    "id": st.column_config.TextColumn(
+                        "ID",
+                        width="small",
+                        required=True
+                    ),
+                    "email": st.column_config.TextColumn(
+                        get_admin_text("email", lang),
+                        width="medium",
+                        required=True
+                    ),
+                    "name": st.column_config.TextColumn(
+                        get_admin_text("name", lang),
+                        width="medium",
+                        required=True
+                    ),
+                    "role": st.column_config.SelectboxColumn(
+                        get_admin_text("role", lang),
+                        width="small",
+                        options=["admin", "user"],
+                        required=True
+                    ),
+                    "department": st.column_config.TextColumn(
+                        get_admin_text("department", lang),
+                        width="medium"
+                    ),
+                    "phone": st.column_config.TextColumn(
+                        get_admin_text("phone", lang),
+                        width="medium"
+                    ),
+                    "created_at": st.column_config.DatetimeColumn(
+                        get_admin_text("creation_date", lang),
+                        format="YYYY-MM-DD HH:mm",
+                        width="medium"
+                    ),
+                    "last_login": st.column_config.DatetimeColumn(
+                        get_admin_text("last_login", lang),
+                        format="YYYY-MM-DD HH:mm",
+                        width="medium"
+                    ),
+                    "action": st.column_config.Column(
+                        get_admin_text("action", lang),
+                        width="small",
+                        disabled=True
+                    )
+                },
+                hide_index=True,
+                use_container_width=True,
+                disabled=["id", "email", "created_at", "last_login", "action"],
+                key="user_table"
+            )
+            
+            # 변경사항 감지 및 업데이트
+            if st.session_state.get('user_table', None) is not None:
+                for idx, row in edited_df.iterrows():
+                    if row['role'] != users[idx]['role']:
+                        if change_user_role(row['id'], row['role']):
+                            st.success(f"{row['name']} {get_admin_text('role_changed', lang)} {row['role']}")
+            
+            # 사용자 선택 삭제
+            cols = st.columns([3, 1])
+            with cols[0]:
+                selected_user = st.selectbox(
+                    get_admin_text("select_user", lang),
+                    options=[user['email'] for user in users],
+                    key="delete_user_select"
+                )
+            with cols[1]:
+                if st.button(get_admin_text("delete_user", lang), key="delete_user_button", type="primary"):
+                    if selected_user:
+                        user_id = None
+                        for user in users:
+                            if user['email'] == selected_user:
+                                user_id = user['id']
+                                break
+                        
+                        if user_id:
+                            if delete_user(user_id):
+                                st.success(get_admin_text("user_deleted", lang))
+                                st.rerun()
+        else:
+            st.info("사용자가 없습니다.")
+        
+        # 사용자 추가 폼
+        with st.form("add_user_form"):
+            st.subheader(get_admin_text("add_user", lang))
+            
+            user_name = st.text_input(get_admin_text("name", lang))
+            user_email = st.text_input(get_admin_text("email", lang))
+            user_dept = st.text_input(get_admin_text("department", lang))
+            user_phone = st.text_input(get_admin_text("phone", lang))
+            user_role = st.selectbox(
+                get_admin_text("role", lang),
+                options=["user", "admin"]
+            )
+            user_password = st.text_input(get_admin_text("password", lang), type="password")
+            user_password_confirm = st.text_input(get_admin_text("confirm_password", lang), type="password")
+            
+            if st.form_submit_button(get_admin_text("add_user", lang)):
+                if not user_name or not user_email or not user_password or not user_password_confirm:
+                    st.error(get_admin_text("fill_all_fields", lang))
+                elif user_password != user_password_confirm:
+                    st.error(get_text("password_mismatch", lang))
+                else:
+                    if add_user(user_name, user_email, user_password, user_dept, user_phone, user_role):
+                        st.success(get_admin_text("user_added", lang))
+                        st.rerun()
     
     # 설비 관리
     with tab2:
@@ -251,44 +470,51 @@ def show_admin_settings(lang='ko'):
             }
         )
         
-        with st.form("equipment_form"):
+        # 설비 추가 폼
+        with st.form("add_equipment_form"):
             st.subheader(get_admin_text("add_equipment", lang))
-            new_equipment = st.text_input(get_admin_text("equipment_number", lang))
-            new_building = st.selectbox(get_admin_text("building", lang), options=buildings[lang])
-            new_type = st.selectbox(get_admin_text("equipment_type", lang), options=equipment_types[lang])
+            
+            cols = st.columns(2)
+            with cols[0]:
+                equipment_number = st.text_input(get_admin_text("equipment_number", lang))
+                building = st.selectbox(
+                    get_admin_text("building", lang),
+                    options=buildings[lang]
+                )
+            
+            with cols[1]:
+                equipment_type = st.selectbox(
+                    get_admin_text("equipment_type", lang),
+                    options=equipment_types[lang]
+                )
+                status = st.selectbox(
+                    get_admin_text("status", lang),
+                    options=status_types[lang]
+                )
+            
             if st.form_submit_button(get_admin_text("add_equipment", lang)):
-                if new_equipment:
-                    st.success(f"{get_admin_text('equipment_added', lang)} {new_equipment}")
-                else:
+                if not equipment_number:
                     st.error(get_admin_text("enter_equipment_number", lang))
+                else:
+                    st.success(f"'{equipment_number}' {get_admin_text('equipment_added', lang)}")
+                    st.rerun()
     
     # 오류 코드 관리
     with tab3:
         st.subheader(get_admin_text("error_code_list", lang))
         
-        # 오류 유형 설정
-        error_types = {
-            'ko': ['하드웨어', '센서', '전기', '기계', '소프트웨어'],
-            'vi': ['Phần cứng', 'Cảm biến', 'Điện', 'Cơ khí', 'Phần mềm']
-        }
+        # 예시 데이터
+        error_code_data = [
+            {"error_code": "E001", "description": "모터 과열", "error_type": "모터"},
+            {"error_code": "E002", "description": "센서 고장", "error_type": "센서"},
+            {"error_code": "E003", "description": "전원 문제", "error_type": "전기"},
+            {"error_code": "E004", "description": "제어기 오류", "error_type": "제어"},
+            {"error_code": "E005", "description": "기계적 고장", "error_type": "기계"}
+        ]
         
-        # 설명 설정
-        descriptions = {
-            'ko': ['모터 과열', '센서 오류', '전원 불안정', '압력 이상', '통신 오류'],
-            'vi': ['Động cơ quá nhiệt', 'Lỗi cảm biến', 'Nguồn điện không ổn định', 'Áp suất bất thường', 'Lỗi giao tiếp']
-        }
-        
-        error_codes_data = []
-        for i in range(5):
-            error_codes_data.append({
-                'error_code': f'ERR00{i+1}',
-                'description': descriptions[lang][i],
-                'error_type': error_types[lang][i]
-            })
-        
-        df_errors = pd.DataFrame(error_codes_data)
+        df_error_codes = pd.DataFrame(error_code_data)
         st.dataframe(
-            df_errors,
+            df_error_codes,
             column_config={
                 "error_code": get_admin_text("error_code", lang),
                 "description": get_admin_text("description", lang),
@@ -296,34 +522,39 @@ def show_admin_settings(lang='ko'):
             }
         )
         
-        with st.form("error_code_form"):
+        # 오류 코드 추가 폼
+        with st.form("add_error_code_form"):
             st.subheader(get_admin_text("add_error_code", lang))
-            new_code = st.text_input(get_admin_text("error_code", lang))
-            new_description = st.text_input(get_admin_text("description", lang))
-            new_type = st.selectbox(get_admin_text("error_type", lang), options=error_types[lang])
+            
+            cols = st.columns(3)
+            with cols[0]:
+                error_code = st.text_input(get_admin_text("error_code", lang))
+            
+            with cols[1]:
+                error_type = st.text_input(get_admin_text("error_type", lang))
+            
+            with cols[2]:
+                description = st.text_input(get_admin_text("description", lang))
+            
             if st.form_submit_button(get_admin_text("add_error_code", lang)):
-                if new_code and new_description:
-                    st.success(f"{get_admin_text('error_code_added', lang)} {new_code}")
-                else:
+                if not error_code or not error_type or not description:
                     st.error(get_admin_text("fill_all_fields", lang))
+                else:
+                    st.success(f"'{error_code}' {get_admin_text('error_code_added', lang)}")
+                    st.rerun()
     
     # 부품 관리
     with tab4:
         st.subheader(get_admin_text("parts_list", lang))
         
-        # 부품명 설정
-        part_names = {
-            'ko': ['베어링', '모터', '센서', '벨트', '기어'],
-            'vi': ['Vòng bi', 'Động cơ', 'Cảm biến', 'Dây đai', 'Bánh răng']
-        }
-        
-        parts_data = []
-        for i in range(5):
-            parts_data.append({
-                'part_code': f'P00{i+1}',
-                'part_name': part_names[lang][i],
-                'stock': [10, 5, 15, 8, 12][i]
-            })
+        # 예시 데이터
+        parts_data = [
+            {"part_code": "P001", "part_name": "모터", "stock": 10},
+            {"part_code": "P002", "part_name": "센서", "stock": 15},
+            {"part_code": "P003", "part_name": "전원 모듈", "stock": 8},
+            {"part_code": "P004", "part_name": "제어기", "stock": 5},
+            {"part_code": "P005", "part_name": "베어링", "stock": 20}
+        ]
         
         df_parts = pd.DataFrame(parts_data)
         st.dataframe(
@@ -331,17 +562,34 @@ def show_admin_settings(lang='ko'):
             column_config={
                 "part_code": get_admin_text("part_code", lang),
                 "part_name": get_admin_text("part_name", lang),
-                "stock": get_admin_text("stock", lang)
+                "stock": st.column_config.NumberColumn(
+                    get_admin_text("stock", lang),
+                    format="%d 개"
+                )
             }
         )
         
-        with st.form("parts_form"):
+        # 부품 추가 폼
+        with st.form("add_part_form"):
             st.subheader(get_admin_text("add_part", lang))
-            new_part_code = st.text_input(get_admin_text("part_code", lang))
-            new_part_name = st.text_input(get_admin_text("part_name", lang))
-            new_stock = st.number_input(get_admin_text("initial_stock", lang), min_value=0)
+            
+            cols = st.columns(3)
+            with cols[0]:
+                part_code = st.text_input(get_admin_text("part_code", lang))
+            
+            with cols[1]:
+                part_name = st.text_input(get_admin_text("part_name", lang))
+            
+            with cols[2]:
+                initial_stock = st.number_input(
+                    get_admin_text("initial_stock", lang),
+                    min_value=0,
+                    value=0
+                )
+            
             if st.form_submit_button(get_admin_text("add_part", lang)):
-                if new_part_code and new_part_name:
-                    st.success(f"{get_admin_text('part_added', lang)} {new_part_code}")
+                if not part_code or not part_name:
+                    st.error(get_admin_text("fill_all_fields", lang))
                 else:
-                    st.error(get_admin_text("fill_all_fields", lang)) 
+                    st.success(f"'{part_name}' {get_admin_text('part_added', lang)}")
+                    st.rerun() 
