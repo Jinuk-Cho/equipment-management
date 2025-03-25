@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS equipment (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     equipment_number VARCHAR(50) UNIQUE NOT NULL,
+    serial_number VARCHAR(50),
     equipment_type VARCHAR(100) NOT NULL,
     building VARCHAR(100) NOT NULL,
     status VARCHAR(50) DEFAULT '정상',
@@ -46,10 +47,16 @@ CREATE TABLE IF NOT EXISTS error_history (
     equipment_id UUID REFERENCES equipment(id),
     error_code_id UUID REFERENCES error_codes(id),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    equipment_number VARCHAR(50),
+    serial_number VARCHAR(50),
     repair_time INTEGER NOT NULL,
     repair_method TEXT,
     worker_id UUID REFERENCES users(id),
     supervisor_id UUID REFERENCES users(id),
+    worker VARCHAR(100),
+    supervisor VARCHAR(100),
+    error_code VARCHAR(20),
+    error_detail TEXT,
     image_paths TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -60,8 +67,13 @@ CREATE TABLE IF NOT EXISTS parts_replacement (
     equipment_id UUID REFERENCES equipment(id),
     part_id UUID REFERENCES parts(id),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    equipment_number VARCHAR(50),
+    serial_number VARCHAR(50),
     worker_id UUID REFERENCES users(id),
     supervisor_id UUID REFERENCES users(id),
+    worker VARCHAR(100),
+    supervisor VARCHAR(100),
+    part_code VARCHAR(20),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -150,12 +162,12 @@ VALUES (
 
 -- 샘플 데이터 생성
 -- 설비 데이터
-INSERT INTO equipment (equipment_number, equipment_type, building, status) VALUES
-('EQ001', '프레스', 'A동', '정상'),
-('EQ002', '컨베이어', 'A동', '점검중'),
-('EQ003', '로봇', 'B동', '정상'),
-('EQ004', '프레스', 'B동', '고장'),
-('EQ005', '컨베이어', 'C동', '정상')
+INSERT INTO equipment (equipment_number, serial_number, equipment_type, building, status) VALUES
+('EQ001', '800-001', '프레스', 'A동', '정상'),
+('EQ002', '800-002', '컨베이어', 'A동', '점검중'),
+('EQ003', '800-003', '로봇', 'B동', '정상'),
+('EQ004', '800-004', '프레스', 'B동', '고장'),
+('EQ005', '800-005', '컨베이어', 'C동', '정상')
 ON CONFLICT (equipment_number) DO NOTHING;
 
 -- 오류 코드 데이터

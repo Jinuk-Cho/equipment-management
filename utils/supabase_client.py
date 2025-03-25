@@ -128,7 +128,7 @@ def get_equipment_list():
     if not supabase:
         return []
     try:
-        response = supabase.table('equipment_list').select("*").execute()
+        response = supabase.table('equipment').select("*").execute()
         return response.data
     except Exception as e:
         st.error(f"데이터 조회 오류: {str(e)}")
@@ -138,7 +138,7 @@ def add_equipment(equipment_data):
     if not supabase:
         return None
     try:
-        response = supabase.table('equipment_list').insert(equipment_data).execute()
+        response = supabase.table('equipment').insert(equipment_data).execute()
         return response.data
     except Exception as e:
         st.error(f"데이터 추가 오류: {str(e)}")
@@ -148,7 +148,7 @@ def update_equipment(equipment_id, equipment_data):
     if not supabase:
         return None
     try:
-        response = supabase.table('equipment_list').update(equipment_data).eq('id', equipment_id).execute()
+        response = supabase.table('equipment').update(equipment_data).eq('id', equipment_id).execute()
         return response.data
     except Exception as e:
         st.error(f"데이터 수정 오류: {str(e)}")
@@ -222,7 +222,7 @@ def get_parts_list():
     if not supabase:
         return []
     try:
-        response = supabase.table('parts_list').select("*").execute()
+        response = supabase.table('parts').select("*").execute()
         return response.data
     except Exception as e:
         st.error(f"데이터 조회 오류: {str(e)}")
@@ -232,7 +232,7 @@ def add_part(part_data):
     if not supabase:
         return None
     try:
-        response = supabase.table('parts_list').insert(part_data).execute()
+        response = supabase.table('parts').insert(part_data).execute()
         return response.data
     except Exception as e:
         st.error(f"데이터 추가 오류: {str(e)}")
