@@ -288,3 +288,9 @@ def get_text(key, lang):
     if key in TEXTS:
         return TEXTS[key].get(lang, TEXTS[key]['ko'])  # 기본값은 한국어
     return f"[{key}]"  # 키가 없는 경우 키 자체를 반환 
+
+def get_admin_text(key, lang):
+    """관리자 페이지용 텍스트를 반환합니다."""
+    if key in ADMIN_TEXTS:
+        return ADMIN_TEXTS[key].get(lang, ADMIN_TEXTS[key]['ko'])
+    return f"[{key}]" 
