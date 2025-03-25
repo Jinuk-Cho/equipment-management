@@ -9,8 +9,19 @@ load_dotenv()
 # Supabase 클라이언트 초기화
 def init_connection():
     try:
-        supabase_url = st.secrets["SUPABASE_URL"]
-        supabase_key = st.secrets["SUPABASE_KEY"]
+        # 1. Streamlit Secrets에서 시도
+        try:
+            supabase_url = st.secrets["SUPABASE_URL"]
+            supabase_key = st.secrets["SUPABASE_KEY"]
+        except Exception:
+            # 2. 환경 변수에서 시도
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_KEY")
+            
+            # 3. 직접 하드코딩된 값 사용 (최후의 수단)
+            if not supabase_url or not supabase_key:
+                supabase_url = "https://wgecephqtnpeicfqnwrg.supabase.co"
+                supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndnZWNlcGhxdG5wZWljZnFud3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI1NDE0NzksImV4cCI6MjA1ODExNzQ3OX0.dfgp94tqlhb0fAh0ory5EUAwmP7TpQowlwf5s7Kg8uo"
         
         if not supabase_url or not supabase_key:
             st.error("Supabase 설정이 필요합니다.")
@@ -34,6 +45,18 @@ def sign_in_user(email, password):
     if not supabase:
         st.error("Supabase 설정이 필요합니다. .env 파일을 확인해주세요.")
         return None
+    
+    # 관리자 계정 하드코딩 인증 처리
+    if email == "admin" and password == "admin":
+        # 관리자 계정에 대한 임시 응답 객체 생성
+        class AdminUser:
+            def __init__(self):
+                self.id = "admin-user-id"
+                self.email = "admin@example.com"
+                self.role = "admin"
+                
+        admin_user = AdminUser()
+        return admin_user
     
     try:
         response = supabase.auth.sign_in_with_password({
