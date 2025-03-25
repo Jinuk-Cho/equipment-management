@@ -720,7 +720,7 @@ def show_equipment_serial_management(lang):
         
         # 템플릿 다운로드 버튼
         if st.button(get_admin_text("download_template", lang)):
-            template_csv = "equipment_number,serial_number\n1,800-001\n2,800-002\n"
+            template_csv = "equipment_number,serial_number,axis,building\n1,800-001,3 Axis,A\n2,800-002,4 Axis,B\n"
             st.download_button(
                 label=get_admin_text("download_template", lang),
                 data=template_csv,
@@ -729,7 +729,7 @@ def show_equipment_serial_management(lang):
             )
         
         # CSV 형식 안내
-        st.info(get_admin_text("csv_format", lang))
+        st.info("CSV 형식: equipment_number,serial_number,axis,building (헤더 포함)")
         
         # 파일 업로드
         uploaded_file = st.file_uploader(
@@ -742,29 +742,54 @@ def show_equipment_serial_management(lang):
             try:
                 # CSV 파일 파싱
                 df = pd.read_csv(uploaded_file)
+                st.write("CSV 파일 미리보기 (처음 5행):")
+                st.dataframe(df.head())
                 
                 # 필수 컬럼 확인
-                if 'equipment_number' not in df.columns or 'serial_number' not in df.columns:
-                    st.error("CSV 파일에 'equipment_number'와 'serial_number' 컬럼이 필요합니다.")
+                required_columns = ['equipment_number', 'serial_number']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                
+                if missing_columns:
+                    st.error(f"CSV 파일에 다음 필수 컬럼이 없습니다: {', '.join(missing_columns)}")
                 else:
                     # 데이터 검증
                     if df['equipment_number'].isnull().any() or df['serial_number'].isnull().any():
                         st.error("빈 값이 있습니다. 모든 셀을 채워주세요.")
                     else:
+                        # equipment_number를 정수로 변환
+                        try:
+                            df['equipment_number'] = df['equipment_number'].astype(int)
+                        except Exception as e:
+                            st.error(f"설비 번호를 정수로 변환 중 오류가 발생했습니다: {str(e)}")
+                            st.write("데이터를 확인해주세요. 설비 번호는 숫자(정수)여야 합니다.")
+                            st.dataframe(df[['equipment_number']].head(10))
+                            return
+                        
                         # 데이터 변환
                         records = df.to_dict('records')
                         
-                        # 데이터베이스에 일괄 업로드
-                        result = bulk_upload_equipment_serials(records)
+                        # 레코드 개수 확인
+                        st.info(f"업로드할 레코드 수: {len(records)}")
                         
-                        if result:
-                            st.success(f"{get_admin_text('upload_success', lang)}: {len(result)} records")
-                            st.rerun()  # 페이지 새로고침
-                        else:
-                            st.error(get_admin_text("upload_error", lang))
+                        # 데이터베이스에 일괄 업로드
+                        if st.button("확인 및 업로드", key="confirm_upload"):
+                            with st.spinner("데이터베이스에 업로드 중..."):
+                                result = bulk_upload_equipment_serials(records)
+                                
+                                if result:
+                                    st.success(f"{get_admin_text('upload_success', lang)}: {len(result)} records")
+                                    st.rerun()  # 페이지 새로고침
+                                else:
+                                    st.error(get_admin_text("upload_error", lang))
+                                    st.error("업로드 과정에서 오류가 발생했습니다. Supabase 연결 상태를 확인하세요.")
             
+            except pd.errors.ParserError as e:
+                st.error(f"CSV 파싱 오류: {str(e)}")
+                st.info("파일이 올바른 CSV 형식인지 확인하세요. 콤마(,)로 구분되어 있어야 합니다.")
             except Exception as e:
                 st.error(f"{get_admin_text('upload_error', lang)}: {str(e)}")
+                st.error("상세 오류 정보:")
+                st.exception(e)
     
     # 추가
     elif action == "Add":

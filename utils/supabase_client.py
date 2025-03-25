@@ -396,12 +396,68 @@ def bulk_upload_equipment_serials(serials_data):
     """
     여러 설비-시리얼 매핑을 한 번에 업로드합니다.
     serials_data는 {'equipment_number': number, 'serial_number': 'serial'} 딕셔너리의 리스트여야 합니다.
+    추가 필드: axis, building
     """
     if not supabase:
+        st.error("Supabase 연결이 설정되지 않았습니다.")
         return None
     try:
-        response = supabase.table('equipment_serials').upsert(serials_data).execute()
-        return response.data
+        # 데이터 검증 및 정리
+        validated_data = []
+        for i, item in enumerate(serials_data):
+            # 필수 필드 확인
+            if 'equipment_number' not in item or 'serial_number' not in item:
+                st.warning(f"항목 #{i+1}에 필수 필드가 누락되었습니다: {item}")
+                continue
+                
+            # equipment_number가 정수인지 확인
+            try:
+                equipment_number = int(item['equipment_number'])
+            except (ValueError, TypeError):
+                st.warning(f"항목 #{i+1}의 설비 번호가 정수가 아닙니다: {item['equipment_number']}")
+                continue
+                
+            # 데이터 구성
+            valid_item = {
+                'equipment_number': equipment_number,
+                'serial_number': str(item['serial_number'])
+            }
+            
+            # 선택적 필드 추가
+            if 'axis' in item and item['axis']:
+                valid_item['axis'] = str(item['axis'])
+            if 'building' in item and item['building']:
+                valid_item['building'] = str(item['building'])
+                
+            validated_data.append(valid_item)
+            
+        if not validated_data:
+            st.error("유효한 데이터가 없습니다.")
+            return None
+            
+        # 처리할 데이터 개수 표시
+        st.info(f"처리할 레코드 수: {len(validated_data)}")
+        
+        # 배치 사이즈로 나누어 업로드 (Supabase가 한 번에 처리할 수 있는 레코드 수 제한)
+        batch_size = 100
+        results = []
+        
+        for i in range(0, len(validated_data), batch_size):
+            batch = validated_data[i:i+batch_size]
+            st.info(f"배치 처리 중: {i+1}~{min(i+batch_size, len(validated_data))} / {len(validated_data)}")
+            
+            # Upsert 실행
+            response = supabase.table('equipment_serials').upsert(batch).execute()
+            
+            if response.data:
+                results.extend(response.data)
+                st.success(f"배치 {int(i/batch_size)+1} 처리 완료: {len(response.data)}개 레코드")
+            else:
+                st.error(f"배치 {int(i/batch_size)+1} 처리 중 오류 발생")
+                
+        return results
+        
     except Exception as e:
         st.error(f"시리얼 번호 일괄 업로드 오류: {str(e)}")
+        st.exception(e)  # 상세 오류 정보 표시
         return None 
