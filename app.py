@@ -19,10 +19,9 @@ SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "your_supabase_key")
 
 # 페이지 설정
 st.set_page_config(
-    page_title="설비 관리 시스템 | Hệ thống quản lý thiết bị",
+    page_title="ALMUS CNC 설비 관리 시스템",
     page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 # CSS 스타일 적용
@@ -191,6 +190,69 @@ st.markdown("""
         }
         .back-button {
             margin-top: 1rem;
+        }
+        /* 전역 스타일 */
+        [data-testid="stSidebarNav"] {
+            background-color: #f8f9fa;
+            padding-top: 1rem;
+        }
+        /* 상단 타이틀 스타일 */
+        .main-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            text-align: center;
+            margin: 1rem 0;
+            padding: 0.5rem;
+        }
+        /* 프로필 드롭다운 메뉴 스타일 */
+        .profile-dropdown {
+            position: relative;
+            display: inline-block;
+            float: right;
+        }
+        .profile-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            color: #1f2937;
+        }
+        .profile-button:hover {
+            background-color: #f3f4f6;
+            border-radius: 4px;
+        }
+        .profile-icon {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #fff;
+            min-width: 160px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            z-index: 1000;
+        }
+        .dropdown-content a {
+            color: #1f2937;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #f3f4f6;
+        }
+        .show {
+            display: block;
+        }
+        /* 하단 버튼 숨김 */
+        .bottom-buttons {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -507,7 +569,7 @@ else:
         
     else:
         # 상단 바 - 제목과 언어 선택기
-        col1, col2, col3 = st.columns([1, 3, 2])
+        col1, col2, col3 = st.columns([1, 3, 1])
 
         with col1:
             # 빈 공간
