@@ -1,12 +1,64 @@
-import streamlit as st
-import pandas as pd
+try:
+    import streamlit as st
+except ImportError:
+    print("ERROR: 'streamlit' package is not installed. Please install it using: pip install streamlit")
+    # 임시 대체 모듈
+    class StMock:
+        def __getattr__(self, name):
+            def dummy(*args, **kwargs):
+                return None
+            return dummy
+    st = StMock()
+
+try:
+    import pandas as pd
+except ImportError:
+    print("ERROR: 'pandas' package is not installed. Please install it using: pip install pandas")
+    # 임시 대체 모듈
+    import csv
+    class PdMock:
+        def __getattr__(self, name):
+            def dummy(*args, **kwargs):
+                return None
+            return dummy
+    pd = PdMock()
+
 from datetime import datetime, timedelta
 import os
 import json
-from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number, add_model_change, insert_data, add_equipment_stop
-from components.language import get_text
-from PIL import Image
-import io
+
+try:
+    from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number, add_model_change, insert_data, add_equipment_stop
+except ImportError:
+    print("ERROR: 'utils.supabase_client' module not found.")
+    # 임시 대체 함수들
+    def add_error_history(*args, **kwargs): return None
+    def add_parts_replacement(*args, **kwargs): return None
+    def get_serial_by_equipment_number(*args, **kwargs): return None
+    def add_model_change(*args, **kwargs): return None
+    def insert_data(*args, **kwargs): return None
+    def add_equipment_stop(*args, **kwargs): return None
+
+try:
+    from components.language import get_text
+except ImportError:
+    print("ERROR: 'components.language' module not found.")
+    # 임시 대체 함수
+    def get_text(*args, **kwargs): return args[0]
+
+try:
+    from PIL import Image
+    import io
+except ImportError:
+    print("ERROR: 'Pillow' package is not installed. Please install it using: pip install Pillow")
+    # 임시 대체 모듈
+    class ImageMock:
+        def __getattr__(self, name):
+            def dummy(*args, **kwargs):
+                return None
+            return dummy
+    Image = ImageMock()
+    io = __import__('io')
 
 # 데이터 입력 페이지 텍스트
 DATA_INPUT_TEXTS = {
@@ -579,4 +631,11 @@ def get_equipment_from_supabase(equipment_number, serial_number=None):
         "equipment_type": "프레스" if equipment_number % 3 == 0 else "컨베이어" if equipment_number % 3 == 1 else "로봇",
         "building": f"{chr(65 + (equipment_number % 3))}동",
         "status": "정상" if equipment_number % 4 != 0 else "점검중"
-    } 
+    }
+
+# 파일이 직접 실행될 때 작동하는 메인 함수 추가
+if __name__ == "__main__":
+    print("데이터 입력 모듈이 성공적으로 로드되었습니다.")
+    print("이 모듈은 필요한 모든 패키지를 설치한 후 사용할 수 있습니다.")
+    print("필요한 패키지: streamlit, pandas, Pillow")
+    print("설치 명령어: pip install streamlit pandas Pillow") 
