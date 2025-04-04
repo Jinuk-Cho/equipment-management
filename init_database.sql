@@ -77,6 +77,23 @@ CREATE TABLE IF NOT EXISTS parts_replacement (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 설비 정지 이력 테이블
+CREATE TABLE IF NOT EXISTS equipment_stops (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    equipment_id UUID REFERENCES equipment(id),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    equipment_number VARCHAR(50),
+    serial_number VARCHAR(50),
+    stop_reason VARCHAR(100) NOT NULL,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    duration_minutes INTEGER NOT NULL,
+    details TEXT,
+    worker VARCHAR(100),
+    supervisor VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 시리얼 번호 매핑 테이블
 CREATE TABLE IF NOT EXISTS equipment_serials (
     id SERIAL PRIMARY KEY,
@@ -107,6 +124,7 @@ ALTER TABLE error_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE error_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parts_replacement ENABLE ROW LEVEL SECURITY;
+ALTER TABLE equipment_stops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipment_serials ENABLE ROW LEVEL SECURITY;
 
 -- 관리자는 모든 테이블에 대한 모든 권한 부여
@@ -134,6 +152,10 @@ CREATE POLICY admin_all_parts_replacement ON parts_replacement FOR ALL TO authen
     auth.uid() IN (SELECT id FROM users WHERE role = 'admin')
 );
 
+CREATE POLICY admin_all_equipment_stops ON equipment_stops FOR ALL TO authenticated USING (
+    auth.uid() IN (SELECT id FROM users WHERE role = 'admin')
+);
+
 CREATE POLICY "Public equipment_serials access" ON equipment_serials FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can insert equipment_serials" ON equipment_serials FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Users can update their own equipment_serials" ON equipment_serials FOR UPDATE USING (auth.role() = 'authenticated');
@@ -157,10 +179,12 @@ CREATE POLICY update_own_user_profile ON users FOR UPDATE TO authenticated USING
 -- 오류 이력 및 부품 교체 이력 읽기 정책
 CREATE POLICY read_all_error_history ON error_history FOR SELECT TO authenticated USING (true);
 CREATE POLICY read_all_parts_replacement ON parts_replacement FOR SELECT TO authenticated USING (true);
+CREATE POLICY read_all_equipment_stops ON equipment_stops FOR SELECT TO authenticated USING (true);
 
 -- 오류 이력 및 부품 교체 이력 생성 정책
 CREATE POLICY insert_error_history ON error_history FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY insert_parts_replacement ON parts_replacement FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY insert_equipment_stops ON equipment_stops FOR INSERT TO authenticated WITH CHECK (true);
 
 -- 부품 교체시 재고 자동 감소 트리거
 CREATE OR REPLACE FUNCTION decrease_part_stock()

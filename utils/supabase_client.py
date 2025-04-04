@@ -404,4 +404,121 @@ def bulk_upload_equipment_serials(serials_data):
         return response.data
     except Exception as e:
         st.error(f"시리얼 번호 일괄 업로드 오류: {str(e)}")
-        return None 
+        return None
+
+# 모델 변경 이력 관련 함수
+def get_model_changes():
+    """모델 변경 이력을 가져옵니다."""
+    if not supabase:
+        return []
+    try:
+        response = supabase.table('model_changes').select("*").order('timestamp', desc=True).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"모델 변경 이력 조회 오류: {str(e)}")
+        return []
+
+def add_model_change(model_change_data):
+    """
+    모델 변경 정보를 추가합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('model_changes').insert(model_change_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"모델 변경 정보 추가 오류: {str(e)}")
+        return None
+
+def get_model_change_stats(equipment_number=None, start_date=None, end_date=None):
+    """모델 변경 통계를 가져옵니다."""
+    if not supabase:
+        return {}
+    
+    try:
+        query = supabase.table('model_changes').select("*")
+        
+        if equipment_number:
+            query = query.eq('equipment_number', equipment_number)
+        
+        if start_date:
+            query = query.gte('timestamp', start_date)
+        
+        if end_date:
+            query = query.lte('timestamp', end_date)
+            
+        response = query.execute()
+        
+        # 통계 데이터 처리
+        data = response.data
+        
+        if not data:
+            return {
+                "total_changes": 0,
+                "avg_duration": 0,
+                "models": []
+            }
+        
+        # 모델별 변경 횟수 계산
+        model_counts = {}
+        for item in data:
+            from_model = item.get('model_from', 'Unknown')
+            to_model = item.get('model_to', 'Unknown')
+            
+            if from_model not in model_counts:
+                model_counts[from_model] = 0
+            
+            if to_model not in model_counts:
+                model_counts[to_model] = 0
+                
+            model_counts[to_model] += 1
+        
+        # 평균 소요 시간 계산
+        total_duration = sum(item.get('duration_minutes', 0) for item in data)
+        avg_duration = total_duration / len(data) if data else 0
+        
+        return {
+            "total_changes": len(data),
+            "avg_duration": avg_duration,
+            "models": [{"name": k, "count": v} for k, v in model_counts.items()]
+        }
+        
+    except Exception as e:
+        st.error(f"모델 변경 통계 조회 오류: {str(e)}")
+        return {
+            "total_changes": 0,
+            "avg_duration": 0,
+            "models": []
+        }
+
+def add_equipment_stop(stop_data):
+    """
+    설비 정지 정보를 추가합니다.
+    """
+    if not supabase:
+        return None
+    try:
+        response = supabase.table('equipment_stops').insert(stop_data).execute()
+        return response.data
+    except Exception as e:
+        st.error(f"설비 정지 정보 추가 오류: {str(e)}")
+        return None
+
+def get_equipment_stops(equipment_number=None):
+    """
+    설비 정지 이력을 조회합니다. 설비 번호가 지정된 경우 해당 설비의 정지 이력만 반환합니다.
+    """
+    if not supabase:
+        return []
+    try:
+        query = supabase.table('equipment_stops').select("*").order('start_time', desc=True)
+        
+        if equipment_number:
+            query = query.eq('equipment_number', equipment_number)
+            
+        response = query.execute()
+        return response.data
+    except Exception as e:
+        st.error(f"설비 정지 이력 조회 오류: {str(e)}")
+        return [] 

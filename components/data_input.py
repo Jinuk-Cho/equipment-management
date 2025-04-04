@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import json
-from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number
+from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number, add_model_change, insert_data, add_equipment_stop
 from components.language import get_text
 from PIL import Image
 import io
@@ -121,6 +121,50 @@ DATA_INPUT_TEXTS = {
     "no_serial_found": {
         "ko": "해당 설비 번호에 대한 시리얼 번호 정보가 없습니다.",
         "vi": "Không có thông tin số serial cho số thiết bị này"
+    },
+    "stop_reason": {
+        "ko": "정지 사유",
+        "vi": "Lý do dừng"
+    },
+    "stop_reason_pm": {
+        "ko": "PM",
+        "vi": "PM"
+    },
+    "stop_reason_model_change": {
+        "ko": "모델 교체",
+        "vi": "Thay đổi mô hình"
+    },
+    "stop_reason_material_wait": {
+        "ko": "자재대기",
+        "vi": "Chờ vật liệu"
+    },
+    "stop_reason_planned": {
+        "ko": "계획 정지",
+        "vi": "Dừng theo kế hoạch"
+    },
+    "stop_start_time": {
+        "ko": "정지 시작 시간",
+        "vi": "Thời gian bắt đầu dừng"
+    },
+    "stop_end_time": {
+        "ko": "정지 종료 시간",
+        "vi": "Thời gian kết thúc dừng"
+    },
+    "stop_duration": {
+        "ko": "정지 시간 (분)",
+        "vi": "Thời gian dừng (phút)"
+    },
+    "model_name_from": {
+        "ko": "이전 모델명",
+        "vi": "Tên mô hình trước"
+    },
+    "model_name_to": {
+        "ko": "변경 모델명",
+        "vi": "Tên mô hình sau"
+    },
+    "model_change_details": {
+        "ko": "모델 변경 상세 내용",
+        "vi": "Chi tiết thay đổi mô hình"
     }
 }
 
@@ -213,7 +257,8 @@ def show_data_input(lang='ko'):
             max_value=800,
             value=st.session_state.equipment_number,
             step=1,
-            key="temp_equipment_number"
+            key="temp_equipment_number",
+            on_change=update_serial_number
         )
     
     # 폼 외부에서 설비 번호 변경 시 세션 상태 업데이트
@@ -253,6 +298,64 @@ def show_data_input(lang='ko'):
             error_detail = st.text_area(get_input_text("error_detail", lang))
         
         with col2:
+            # 정지 사유 선택 추가
+            stop_reasons = [
+                get_input_text("stop_reason_pm", lang),
+                get_input_text("stop_reason_model_change", lang),
+                get_input_text("stop_reason_material_wait", lang),
+                get_input_text("stop_reason_planned", lang)
+            ]
+            
+            stop_reason = st.selectbox(
+                get_input_text("stop_reason", lang),
+                options=stop_reasons
+            )
+            
+            # 정지 시작 시간 (기본값: 현재 시간)
+            stop_start_time = st.datetime_input(
+                get_input_text("stop_start_time", lang),
+                value=datetime.now()
+            )
+            
+            # 정지 종료 시간 (선택 사항)
+            stop_end_time = st.datetime_input(
+                get_input_text("stop_end_time", lang),
+                value=datetime.now() + timedelta(minutes=30)
+            )
+            
+            # 정지 시간 계산 및 표시 (분 단위)
+            if stop_end_time > stop_start_time:
+                duration_minutes = (stop_end_time - stop_start_time).total_seconds() / 60
+                stop_duration = st.number_input(
+                    get_input_text("stop_duration", lang),
+                    value=int(duration_minutes),
+                    step=1,
+                    min_value=1
+                )
+            else:
+                st.error("종료 시간은 시작 시간보다 이후여야 합니다.")
+                stop_duration = 0
+            
+            # 선택된 정지 사유가 모델 교체인 경우 추가 입력 필드 표시
+            if stop_reason == get_input_text("stop_reason_model_change", lang):
+                # 샘플 모델명 리스트
+                model_list = ['M001', 'M002', 'M003', 'M004', 'M005', 'M006']
+                
+                model_from = st.selectbox(
+                    get_input_text("model_name_from", lang),
+                    options=model_list
+                )
+                
+                model_to = st.selectbox(
+                    get_input_text("model_name_to", lang),
+                    options=model_list
+                )
+                
+                model_change_details = st.text_area(
+                    get_input_text("model_change_details", lang),
+                    height=100
+                )
+            
             repair_time = st.number_input(get_input_text("repair_time", lang), min_value=1, max_value=480)
             part_code = st.selectbox(get_input_text("part_code", lang), parts_list)
             worker = st.text_input(get_input_text("worker", lang))
@@ -360,9 +463,57 @@ def show_data_input(lang='ko'):
                 success_session = True
                 success_error = False
                 success_parts = False
+                success_model_change = False
                 
                 # 세션 상태에 저장
                 st.session_state.input_history.insert(0, session_data)  # 최신 항목이 맨 위에 오도록 추가
+                
+                # 정지 사유에 따른 처리
+                if stop_reason == get_input_text("stop_reason_model_change", lang):
+                    # 모델 변경 데이터 저장
+                    model_change_data = {
+                        "timestamp": timestamp_str,
+                        "equipment_number": formatted_equipment,
+                        "serial_number": st.session_state.serial_number,
+                        "model_from": model_from,
+                        "model_to": model_to,
+                        "start_time": stop_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "end_time": stop_end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "duration_minutes": stop_duration,
+                        "details": model_change_details if 'model_change_details' in locals() else "",
+                        "worker": worker,
+                        "supervisor": supervisor
+                    }
+                    
+                    try:
+                        model_result = add_model_change(model_change_data)
+                        if model_result:
+                            success_model_change = True
+                            st.success(f"모델 변경 데이터가 성공적으로 저장되었습니다.")
+                    except Exception as e:
+                        st.warning(f"모델 변경 데이터 저장 오류: {str(e)}")
+                        
+                else:
+                    # 일반 정지 기록 저장
+                    stop_data = {
+                        "timestamp": timestamp_str,
+                        "equipment_number": formatted_equipment,
+                        "serial_number": st.session_state.serial_number,
+                        "stop_reason": stop_reason,
+                        "start_time": stop_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "end_time": stop_end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "duration_minutes": stop_duration,
+                        "details": error_detail,
+                        "worker": worker,
+                        "supervisor": supervisor
+                    }
+                    
+                    try:
+                        stop_result = add_equipment_stop(stop_data)
+                        if stop_result:
+                            st.success(f"정지 기록이 성공적으로 저장되었습니다.")
+                    except Exception as e:
+                        st.warning(f"정지 기록 저장 오류: {str(e)}")
                 
                 # Supabase에 저장
                 try:
@@ -377,7 +528,8 @@ def show_data_input(lang='ko'):
                         success_parts = True
                         
                     if success_error and success_parts:
-                        st.success(get_input_text("save_success", lang))
+                        if not success_model_change:  # 모델 변경 데이터가 이미 성공 메시지를 표시했다면 중복 표시하지 않음
+                            st.success(get_input_text("save_success", lang))
                     else:
                         st.warning(get_input_text("save_session_only", lang))
                 except Exception as e:
