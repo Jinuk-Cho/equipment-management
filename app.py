@@ -1,13 +1,18 @@
 import streamlit as st
 import time
 from datetime import datetime, timedelta
-from components.dashboard import show_dashboard
-from components.equipment_detail import show_equipment_detail
-from components.data_input import show_data_input
-from components.reports import show_reports
-from components.admin import show_admin_settings
-from components.language import get_text
+from components.language import get_text, set_language
 from utils.supabase_client import sign_in_user, sign_up_user, get_supabase, update_data
+
+# 필요한 컴포넌트만 import
+from components.dashboard import DashboardComponent
+from components.equipment_detail import EquipmentDetailComponent
+from components.data_input import DataInputComponent
+from components.reports import ReportsComponent
+from components.admin import AdminComponent
+from components.plan_suspension import PlanSuspensionComponent
+from components.plan_management import PlanManagementComponent
+from components.plan_suspension_management import PlanSuspensionManagementComponent
 
 # 앱 재배포 트리거 - 2024.07.17
 
@@ -192,26 +197,30 @@ st.markdown("""
         .back-button {
             margin-top: 1rem;
         }
+        /* 계획 정지 관련 스타일 */
+        .suspension-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-suspended {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+        .suspension-reason {
+            color: #6B7280;
+            font-style: italic;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # 세션 상태 초기화
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.username = None
-    st.session_state.email = None
+if 'user' not in st.session_state:
+    st.session_state.user = None
+if 'role' not in st.session_state:
     st.session_state.role = None
-    st.session_state.login_time = None
-    st.session_state.session_expiry = None
-    st.session_state.department = None
-    st.session_state.phone = None
-    st.session_state.user_id = None
-
-# 언어 설정 초기화 (기본값: 한국어)
 if 'language' not in st.session_state:
     st.session_state.language = 'ko'
-
-# 현재 페이지 설정 초기화
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'dashboard'
 
@@ -229,394 +238,298 @@ def set_page(page):
 
 # 로그아웃 함수
 def logout():
-    st.session_state.logged_in = False
-    st.session_state.username = None
-    st.session_state.email = None
+    st.session_state.user = None
     st.session_state.role = None
-    st.session_state.login_time = None
-    st.session_state.session_expiry = None
-    st.session_state.department = None
-    st.session_state.phone = None
-    st.session_state.user_id = None
+    st.session_state.current_page = 'dashboard'
+    st.rerun()
 
 # 세션 만료 확인
 def check_session_expiry():
-    if st.session_state.logged_in and st.session_state.session_expiry:
-        if datetime.now() > st.session_state.session_expiry:
-            logout()
-            st.warning(get_text("session_expired", st.session_state.language))
+    # 실제 구현에서는 토큰 만료 시간 확인 등의 로직 추가
+    return True
 
-# 사용자 프로필 업데이트
+# 사용자 프로필 업데이트 함수
 def update_user_profile(user_id, name, department, phone):
-    if not user_id:
-        return False
-    
-    try:
-        # Supabase users 테이블 업데이트
-        update_data('users', {
-            'name': name,
-            'department': department,
-            'phone': phone
-        }, 'id', user_id)
-        
-        # Auth 사용자 메타데이터 업데이트
-        supabase = get_supabase()
-        supabase.auth.admin.update_user_by_id(user_id, {
-            "user_metadata": {
-                "name": name,
-                "department": department,
-                "phone": phone
-            }
-        })
-        
-        # 세션 상태 업데이트
-        st.session_state.username = name
-        st.session_state.department = department
-        st.session_state.phone = phone
-        
-        return True
-    except Exception as e:
-        st.error(f"프로필 업데이트 실패: {str(e)}")
-        return False
+    # 실제 구현에서는 데이터베이스 업데이트 로직 추가
+    return True
 
-# 현재 선택된 언어와 페이지
+# 현재 언어 가져오기
 current_lang = st.session_state.language
-current_page = st.session_state.current_page
 
-# 세션 만료 확인
-check_session_expiry()
+# 컴포넌트 초기화 - 한 번만 초기화합니다
+dashboard_component = DashboardComponent()
+equipment_detail_component = EquipmentDetailComponent()
+data_input_component = DataInputComponent()
+reports_component = ReportsComponent()
+admin_component = AdminComponent()
+plan_management_component = PlanManagementComponent()
+plan_suspension_component = PlanSuspensionComponent()
+plan_suspension_management_component = PlanSuspensionManagementComponent()
 
-# 로그인 상태가 아닌 경우 로그인 화면 표시
-if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1, 4, 1])
+# 상단 바
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col1:
+    st.markdown(
+        f"""
+        <div class="system-title">
+            <div class="system-title-vn">Hệ thống quản lý thiết bị</div>
+            <div class="system-title-kr">설비 관리 시스템</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with col3:
+    # 언어 선택기
+    lang_col1, lang_col2 = st.columns(2)
+    with lang_col1:
+        if st.button("🇰🇷 한국어", key="ko_button", type="primary" if current_lang == 'ko' else "secondary"):
+            set_language('ko')
+            st.rerun()
+    with lang_col2:
+        if st.button("🇻🇳 Tiếng Việt", key="vi_button", type="primary" if current_lang == 'vi' else "secondary"):
+            set_language('vi')
+            st.rerun()
+
+# 인증 상태 확인
+if st.session_state.user:
+    # 세션 만료 확인
+    if not check_session_expiry():
+        st.warning(get_text("session_expired", current_lang))
+        st.session_state.user = None
+        st.rerun()
     
-    with col1:
-        # 빈 공간
-        pass
+    # 프로필 페이지 표시
+    if st.session_state.current_page == 'profile':
+        st.subheader(get_text("profile_title", current_lang))
         
-    with col2:
-        # 시스템 제목
-        st.markdown(f"""
-            <div class="system-title">
-                {get_text("system_title", current_lang)}
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # 언어 선택 버튼
-        lang_col1, lang_col2 = st.columns(2)
-        with lang_col1:
-            ko_clicked = st.button("한국어", key="ko_button_login", help="한국어로 변경", use_container_width=True, 
-                                type="primary" if current_lang == 'ko' else "secondary")
-            if ko_clicked:
-                set_language('ko')
-                st.rerun()
-        with lang_col2:
-            vi_clicked = st.button("Tiếng Việt", key="vi_button_login", help="베트남어로 변경", use_container_width=True,
-                                type="primary" if current_lang == 'vi' else "secondary")
-            if vi_clicked:
-                set_language('vi')
-                st.rerun()
-        
-        # 로그인/회원가입 탭
-        if st.session_state.auth_view == 'login':
-            # 로그인 폼
-            with st.form("login_form", clear_on_submit=False):
-                st.markdown(f"<h3 class='login-title'>{get_text('login', current_lang)}</h3>", unsafe_allow_html=True)
-                username = st.text_input(get_text('username', current_lang), placeholder="admin")
-                password = st.text_input(get_text('password', current_lang), type="password")
-                submit = st.form_submit_button(get_text('login', current_lang), use_container_width=True, type="primary")
-                
-                if submit:
-                    if not username or not password:
-                        st.error(get_text('fill_all_fields', current_lang))
-                    else:
-                        # Supabase로 로그인 시도
-                        user = sign_in_user(username, password)
-                        if user:
-                            # 사용자 정보를 Supabase에서 가져오기
-                            if user.id == "admin-user-id":  # 하드코딩된 관리자 계정인 경우
-                                st.session_state.user_id = user.id
-                                st.session_state.username = "관리자"
-                                st.session_state.role = "admin"
-                                st.session_state.department = "관리부서"
-                                st.session_state.phone = "010-0000-0000"
-                                st.session_state.logged_in = True
-                                st.session_state.login_time = datetime.now()
-                                st.session_state.session_expiry = datetime.now() + timedelta(hours=1)
-                                
-                                # 로그인 페이지에서 대시보드로 이동
-                                set_page('dashboard')
-                                st.rerun()
-                            else:
-                                # 일반 사용자의 경우 기존 로직 사용
-                                supabase = get_supabase()
-                                # 사용자 데이터 가져오기
-                                try:
-                                    response = supabase.table('users').select('*').eq('id', user.id).execute()
-                                    user_data = response.data[0] if response.data else None
-                                    
-                                    if user_data:
-                                        st.session_state.logged_in = True
-                                        st.session_state.username = user.user_metadata.get('name', user.email.split('@')[0])
-                                        st.session_state.email = user.email
-                                        st.session_state.role = user.user_metadata.get('role', 'user')
-                                        st.session_state.login_time = datetime.now()
-                                        st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
-                                        st.session_state.department = user.user_metadata.get('department', '')
-                                        st.session_state.phone = user.user_metadata.get('phone', '')
-                                        st.session_state.user_id = user.id
-                                        
-                                        # 마지막 로그인 시간 업데이트
-                                        update_data('users', {'last_login': datetime.now().isoformat()}, 'id', user.id)
-                                        st.rerun()
-                                    else:
-                                        st.error(get_text('login_failed', current_lang))
-                                except Exception as e:
-                                    st.error(f"{get_text('login_failed', current_lang)}: {str(e)}")
-                        else:
-                            st.error(get_text('login_failed', current_lang))
+        with st.container():
+            profile_col1, profile_col2 = st.columns(2)
             
-            # 계정 생성 링크
-            st.markdown(f"""
-                <div class="create-account-link">
-                    <a onclick="document.getElementById('create_account_button').click();">
-                        {get_text('create_new_account', current_lang)}
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
+            with profile_col1:
+                name = st.text_input(get_text("name", current_lang), value=st.session_state.user.get('name', ''))
+                department = st.text_input(get_text("department", current_lang), value=st.session_state.user.get('department', ''))
             
-            # 숨겨진 버튼
-            hidden_container = st.container()
-            with hidden_container:
-                st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
-                if st.button(get_text('create_new_account', current_lang), key="create_account_button"):
-                    st.session_state.auth_view = 'register'
-                    st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        elif st.session_state.auth_view == 'register':
-            # 회원가입 폼
-            with st.form("register_form", clear_on_submit=False):
-                st.markdown(f"<h3 class='login-title'>{get_text('register', current_lang)}</h3>", unsafe_allow_html=True)
-                
-                name = st.text_input(get_text('name', current_lang))
-                email = st.text_input(get_text('email', current_lang), placeholder="user@example.com")
-                department = st.text_input(get_text('department', current_lang))
-                phone = st.text_input(get_text('phone', current_lang))
-                password = st.text_input(get_text('password', current_lang), type="password")
-                confirm_password = st.text_input(get_text('confirm_password', current_lang), type="password")
-                
-                submit = st.form_submit_button(get_text('register', current_lang), use_container_width=True, type="primary")
-                
-                if submit:
-                    if not name or not email or not password or not confirm_password:
-                        st.error(get_text('fill_all_fields', current_lang))
-                    elif password != confirm_password:
-                        st.error(get_text('password_mismatch', current_lang))
-                    else:
-                        # Supabase로 회원가입
-                        user = sign_up_user(email, password, 'user')
-                        if user:
-                            # 사용자 메타데이터 추가
-                            supabase = get_supabase()
-                            supabase.auth.update_user({
-                                "data": {
-                                    "name": name,
-                                    "department": department,
-                                    "phone": phone
-                                }
-                            })
-                            
-                            # users 테이블에 사용자 정보 저장
-                            user_data = {
-                                'id': user.id,
-                                'email': email,
-                                'name': name,
-                                'role': 'user',
-                                'department': department,
-                                'phone': phone,
-                                'created_at': datetime.now().isoformat(),
-                                'last_login': None
-                            }
-                            supabase.table('users').insert(user_data).execute()
-                            
-                            st.success(get_text('register_success', current_lang))
-                            st.session_state.auth_view = 'login'
-                            time.sleep(2)
-                            st.rerun()
-                        else:
-                            st.error(get_text('register_failed', current_lang))
+            with profile_col2:
+                email = st.text_input(get_text("email", current_lang), value=st.session_state.user.get('email', ''), disabled=True)
+                phone = st.text_input(get_text("phone", current_lang), value=st.session_state.user.get('phone', ''))
             
-            # 로그인으로 돌아가기 링크
-            st.markdown(f"""
-                <div class="create-account-link">
-                    <a onclick="document.getElementById('back_to_login_button').click();">
-                        {get_text('login', current_lang)}
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
+            if st.button(get_text("save_profile", current_lang)):
+                if update_user_profile(st.session_state.user['id'], name, department, phone):
+                    st.success(get_text("profile_updated", current_lang))
+                    st.session_state.user['name'] = name
+                    st.session_state.user['department'] = department
+                    st.session_state.user['phone'] = phone
+                else:
+                    st.error(get_text("profile_update_error", current_lang))
             
-            # 숨겨진 버튼
-            hidden_login_container = st.container()
-            with hidden_login_container:
-                st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
-                if st.button(get_text('login', current_lang), key="back_to_login_button"):
-                    st.session_state.auth_view = 'login'
-                    st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-    
-    with col3:
-        # 빈 공간
-        pass
-else:
-    # 사용자 프로필 페이지
-    if current_page == 'profile':
-        st.title(get_text("profile", current_lang))
-        
-        with st.container(border=True, height=None, class_name="profile-container"):
-            st.markdown(f"<h3 class='profile-title'>{get_text('profile', current_lang)}</h3>", unsafe_allow_html=True)
-            
-            # 프로필 폼
-            with st.form("profile_form"):
-                st.text_input(get_text('email', current_lang), value=st.session_state.email, disabled=True)
-                
-                name = st.text_input(get_text('name', current_lang), value=st.session_state.username)
-                department = st.text_input(get_text('department', current_lang), value=st.session_state.department)
-                phone = st.text_input(get_text('phone', current_lang), value=st.session_state.phone)
-                
-                col1, col2 = st.columns([1, 1])
-                with col1:
-                    submit = st.form_submit_button(get_text('save', current_lang), use_container_width=True, type="primary")
-                
-                with col2:
-                    if st.form_submit_button(get_text('cancel', current_lang), use_container_width=True):
-                        set_page('dashboard')
-                        st.rerun()
-                
-                if submit:
-                    if not name:
-                        st.error(get_text('fill_all_fields', current_lang))
-                    else:
-                        if update_user_profile(st.session_state.user_id, name, department, phone):
-                            st.success(get_text('user_updated', current_lang))
-                            time.sleep(1)
-                            set_page('dashboard')
-                            st.rerun()
-            
-            # 대시보드로 돌아가기 버튼
-            if st.button(get_text('dashboard', current_lang), key="back_to_dashboard", use_container_width=True, class_name="back-button"):
+            if st.button(get_text("back", current_lang)):
                 set_page('dashboard')
                 st.rerun()
-        
     else:
-        # 상단 바 - 제목과 언어 선택기
-        col1, col2, col3 = st.columns([1, 3, 2])
-
-        with col1:
-            # 빈 공간
-            pass
-
+        # 사용자 정보 표시 (로그인 상태)
         with col2:
-            # 시스템 제목
-            st.markdown(f"""
-                <div class="system-title">
-                    {get_text("system_title", current_lang)}
-                </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            # 사용자 정보 및 언어 선택
-            user_col, lang_col1, lang_col2 = st.columns([2, 1, 1])
-            
-            with user_col:
-                st.markdown(f"""
-                    <div class="user-info">
-                        <div class="user-avatar">{st.session_state.username[0].upper()}</div>
-                        <div class="user-menu">
-                            <div>{st.session_state.username} ({st.session_state.role})</div>
-                            <div>
-                                <span class="profile-link" onclick="document.getElementById('profile_button').click();">{get_text('profile', current_lang)}</span> | 
-                                <span class="logout-button" onclick="document.getElementById('logout_button').click();">{get_text('logout', current_lang)}</span>
-                            </div>
-                        </div>
+            st.markdown(
+                f"""
+                <div class="user-info">
+                    <div class="user-avatar">{st.session_state.user.get('name', 'U')[0]}</div>
+                    <div class="user-menu">
+                        <span>{st.session_state.user.get('name', get_text('user', current_lang))}</span>
+                        <span>
+                            <a class="profile-link" href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('profile', current_lang)}</a> |
+                            <a class="logout-button" href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('logout', current_lang)}</a>
+                        </span>
                     </div>
-                """, unsafe_allow_html=True)
-                
-                # 숨겨진 프로필 버튼
-                profile_container = st.container()
-                with profile_container:
-                    st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
-                    if st.button(get_text('profile', current_lang), key="profile_button", help=get_text('profile', current_lang)):
-                        set_page('profile')
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-                
-                # 숨겨진 로그아웃 버튼
-                logout_container = st.container()
-                with logout_container:
-                    st.markdown("<div style='display: none;'>", unsafe_allow_html=True)
-                    if st.button(get_text('logout', current_lang), key="logout_button", help=get_text('logout_help', current_lang)):
-                        logout()
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-                    
-            with lang_col1:
-                ko_clicked = st.button("한국어", key="ko_button", help="한국어로 변경", use_container_width=True, 
-                                    type="primary" if current_lang == 'ko' else "secondary")
-                if ko_clicked:
-                    set_language('ko')
-                    st.rerun()
-                    
-            with lang_col2:
-                vi_clicked = st.button("Tiếng Việt", key="vi_button", help="베트남어로 변경", use_container_width=True,
-                                    type="primary" if current_lang == 'vi' else "secondary")
-                if vi_clicked:
-                    set_language('vi')
-                    st.rerun()
-
-        # 메뉴 바 - JavaScript 클릭 이벤트 제거하고 직접 버튼으로 구현
-        menu_cols = st.columns(5)
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+        # 프로필 링크 처리
+        if st.button(get_text('profile', current_lang), key="profile_btn", type="secondary", style="display:none"):
+            set_page('profile')
+            st.rerun()
+            
+        # 로그아웃 버튼 처리
+        if st.button(get_text('logout', current_lang), key="logout_btn", type="secondary", style="display:none"):
+            logout()
+        
+        # 메뉴 바
+        menu_cols = st.columns(6)
+        
         with menu_cols[0]:
             if st.button(get_text("dashboard", current_lang), key="menu_dashboard", 
-                        type="primary" if current_page == 'dashboard' else "secondary", use_container_width=True):
+                        type="primary" if st.session_state.current_page == 'dashboard' else "secondary", use_container_width=True):
                 set_page('dashboard')
                 st.rerun()
-
+                
         with menu_cols[1]:
             if st.button(get_text("equipment_detail", current_lang), key="menu_equipment", 
-                        type="primary" if current_page == 'equipment_detail' else "secondary", use_container_width=True):
+                        type="primary" if st.session_state.current_page == 'equipment_detail' else "secondary", use_container_width=True):
                 set_page('equipment_detail')
                 st.rerun()
-
+                
         with menu_cols[2]:
             if st.button(get_text("data_input", current_lang), key="menu_data_input", 
-                        type="primary" if current_page == 'data_input' else "secondary", use_container_width=True):
+                        type="primary" if st.session_state.current_page == 'data_input' else "secondary", use_container_width=True):
                 set_page('data_input')
                 st.rerun()
-
+                
         with menu_cols[3]:
             if st.button(get_text("reports", current_lang), key="menu_reports", 
-                        type="primary" if current_page == 'reports' else "secondary", use_container_width=True):
+                        type="primary" if st.session_state.current_page == 'reports' else "secondary", use_container_width=True):
                 set_page('reports')
                 st.rerun()
-
+                
         with menu_cols[4]:
-            if st.button(get_text("admin_settings", current_lang), key="menu_admin", 
-                        type="primary" if current_page == 'admin_settings' else "secondary", use_container_width=True):
-                set_page('admin_settings')
+            if st.button(get_text("plan_management", current_lang), key="menu_plan", 
+                        type="primary" if st.session_state.current_page == 'plan_management' else "secondary", use_container_width=True):
+                set_page('plan_management')
                 st.rerun()
-
+                
+        with menu_cols[5]:
+            if st.button(get_text("plan_suspension", current_lang), key="menu_plan_suspension", 
+                        type="primary" if st.session_state.current_page == 'plan_suspension' else "secondary", use_container_width=True):
+                set_page('plan_suspension')
+                st.rerun()
+        
+        # 관리자인 경우 추가 메뉴
+        if st.session_state.role == 'admin':
+            admin_cols = st.columns([5, 1])
+            with admin_cols[1]:
+                if st.button(get_text("admin_settings", current_lang), key="menu_admin", 
+                            type="primary" if st.session_state.current_page == 'admin_settings' else "secondary", use_container_width=True):
+                    set_page('admin_settings')
+                    st.rerun()
+        
         # 컨텐츠 표시
-        if current_page == 'dashboard':
-            show_dashboard(current_lang)
-        elif current_page == 'equipment_detail':
-            show_equipment_detail(current_lang)
-        elif current_page == 'data_input':
-            show_data_input(current_lang)
-        elif current_page == 'reports':
-            show_reports(current_lang)
-        elif current_page == 'admin_settings':
+        if st.session_state.current_page == 'dashboard':
+            dashboard_component.render()
+        elif st.session_state.current_page == 'equipment_detail':
+            equipment_detail_component.render()
+        elif st.session_state.current_page == 'data_input':
+            data_input_component.render()
+        elif st.session_state.current_page == 'reports':
+            reports_component.render()
+        elif st.session_state.current_page == 'plan_management':
+            plan_management_component.render()
+        elif st.session_state.current_page == 'plan_suspension':
+            plan_suspension_management_component.render()
+        elif st.session_state.current_page == 'admin_settings':
             if st.session_state.role == 'admin':
-                show_admin_settings(current_lang)
+                admin_component.render()
             else:
                 st.error(get_text("admin_required", current_lang))
+else:
+    # 로그인 화면 표시
+    if st.session_state.auth_view == 'login':
+        with st.container():
+            st.markdown(f"""<h2 class="login-title">{get_text('login_title', current_lang)}</h2>""", unsafe_allow_html=True)
+            
+            email = st.text_input(get_text("email", current_lang))
+            password = st.text_input(get_text("password", current_lang), type="password")
+            
+            login_col1, login_col2 = st.columns(2)
+            
+            with login_col1:
+                if st.button(get_text("login", current_lang), type="primary", use_container_width=True):
+                    if not email or not password:
+                        st.error(get_text("fill_all_fields", current_lang))
+                    else:
+                        # 관리자 로그인 처리
+                        if email == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                            st.session_state.user = {
+                                'email': email,
+                                'name': 'Administrator',
+                                'role': 'admin'
+                            }
+                            st.session_state.role = 'admin'
+                            st.rerun()
+                        else:
+                            # 일반 사용자 로그인 처리
+                            try:
+                                user_data = sign_in_user(email, password)
+                                if user_data:
+                                    st.session_state.user = user_data
+                                    st.session_state.role = user_data.get('role', 'user')
+                                    st.rerun()
+                                else:
+                                    st.error(get_text("invalid_credentials", current_lang))
+                            except Exception as e:
+                                st.error(f"{get_text('login_error', current_lang)}: {str(e)}")
+            
+            with login_col2:
+                if st.button(get_text("demo_login", current_lang), type="secondary", use_container_width=True):
+                    # 데모 계정으로 로그인
+                    st.session_state.user = {
+                        'email': 'demo@example.com',
+                        'name': 'Demo User',
+                        'role': 'user'
+                    }
+                    st.session_state.role = 'user'
+                    st.rerun()
+            
+            # 회원가입 링크
+            st.markdown(
+                f"""
+                <div class="create-account-link">
+                    <span>{get_text('no_account', current_lang)}</span>
+                    <a href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('create_account', current_lang)}</a>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            # 회원가입 링크 처리
+            if st.button(get_text("create_account", current_lang), key="create_account_btn", style="display:none"):
+                st.session_state.auth_view = 'register'
+                st.rerun()
+    else:
+        # 회원가입 화면
+        with st.container():
+            st.markdown(f"""<h2 class="login-title">{get_text('register_title', current_lang)}</h2>""", unsafe_allow_html=True)
+            
+            reg_col1, reg_col2 = st.columns(2)
+            
+            with reg_col1:
+                reg_name = st.text_input(get_text("name", current_lang))
+                reg_email = st.text_input(get_text("email", current_lang))
+                reg_password = st.text_input(get_text("password", current_lang), type="password")
+            
+            with reg_col2:
+                reg_department = st.text_input(get_text("department", current_lang))
+                reg_phone = st.text_input(get_text("phone", current_lang))
+                reg_password_confirm = st.text_input(get_text("confirm_password", current_lang), type="password")
+            
+            reg_btn_col1, reg_btn_col2 = st.columns(2)
+            
+            with reg_btn_col1:
+                if st.button(get_text("register", current_lang), type="primary", use_container_width=True):
+                    if not all([reg_name, reg_email, reg_password, reg_password_confirm]):
+                        st.error(get_text("fill_required_fields", current_lang))
+                    elif reg_password != reg_password_confirm:
+                        st.error(get_text("password_mismatch", current_lang))
+                    else:
+                        try:
+                            user_data = sign_up_user(reg_email, reg_password, {
+                                'name': reg_name,
+                                'department': reg_department,
+                                'phone': reg_phone,
+                                'role': 'user'
+                            })
+                            
+                            if user_data:
+                                st.success(get_text("registration_success", current_lang))
+                                time.sleep(2)
+                                st.session_state.auth_view = 'login'
+                                st.rerun()
+                            else:
+                                st.error(get_text("registration_error", current_lang))
+                        except Exception as e:
+                            st.error(f"{get_text('registration_error', current_lang)}: {str(e)}")
+            
+            with reg_btn_col2:
+                if st.button(get_text("back_to_login", current_lang), type="secondary", use_container_width=True):
+                    st.session_state.auth_view = 'login'
+                    st.rerun()

@@ -206,152 +206,202 @@ def generate_sample_data(lang='ko'):
     
     return pd.DataFrame(error_data), pd.DataFrame(parts_data)
 
-def show_reports(lang='ko'):
-    """보고서 및 통계 페이지를 표시합니다."""
-    st.title(get_report_text("reports_title", lang))
-    
-    # 예시 데이터 생성
-    error_history, parts_history = generate_sample_data(lang)
-    
-    # 탭 생성
-    tab1, tab2, tab3, tab4 = st.tabs([
-        get_report_text("error_type_analysis", lang),
-        get_report_text("parts_consumption", lang),
-        get_report_text("worker_statistics", lang),
-        get_report_text("downtime_analysis", lang)
-    ])
-    
-    # 고장 유형 분석
-    with tab1:
-        st.subheader(get_report_text("occurrences_by_error_code", lang))
-        error_counts = error_history['오류코드'].value_counts()
+class ReportsComponent:
+    def __init__(self):
+        pass
         
-        fig = px.bar(
-            x=error_counts.index,
-            y=error_counts.values,
-            labels={
-                'x': get_report_text("error_code", lang), 
-                'y': get_report_text("occurrences", lang)
-            }
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    def render(self):
+        """보고서 페이지를 표시합니다."""
+        lang = st.session_state.language
         
-        # 시간대별 고장 발생 추이
-        error_history['시간'] = pd.to_datetime(error_history['발생시간']).dt.hour
-        hourly_errors = error_history['시간'].value_counts().sort_index()
+        st.title(get_report_text("reports_title", lang))
         
-        fig = px.line(
-            x=hourly_errors.index,
-            y=hourly_errors.values,
-            labels={
-                'x': get_report_text("hour", lang), 
-                'y': get_report_text("occurrences", lang)
-            },
-            title=get_report_text("error_trend_by_hour", lang)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # 부품 소모 현황
-    with tab2:
-        st.subheader(get_report_text("replacements_by_part", lang))
-        parts_counts = parts_history['부품코드'].value_counts()
+        # 탭 생성
+        tabs = st.tabs([
+            get_report_text("error_type_analysis", lang),
+            get_report_text("parts_consumption", lang),
+            get_report_text("worker_statistics", lang),
+            get_report_text("downtime_analysis", lang)
+        ])
         
-        fig = px.pie(
-            values=parts_counts.values,
-            names=parts_counts.index,
-            title=get_report_text("replacement_ratio_by_part", lang)
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        # 예시 데이터 생성
+        error_data, parts_data = generate_sample_data(lang)
         
-        # 월별 부품 교체 추이
-        parts_history['월'] = pd.to_datetime(parts_history['교체시간']).dt.strftime('%Y-%m')
-        monthly_parts = parts_history.groupby('월')['부품코드'].count()
+        # 오류 데이터 데이터프레임으로 변환
+        df_errors = pd.DataFrame(error_data)
+        df_errors['시간'] = df_errors['발생시간'].dt.hour
+        df_errors['월'] = df_errors['발생시간'].dt.month
         
-        fig = px.line(
-            x=monthly_parts.index,
-            y=monthly_parts.values,
-            labels={
-                'x': get_report_text("month", lang), 
-                'y': get_report_text("replacements", lang)
-            },
-            title=get_report_text("monthly_parts_trend", lang)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # 작업자별 통계
-    with tab3:
-        st.subheader(get_report_text("repairs_by_worker", lang))
-        worker_counts = error_history['작업자'].value_counts()
+        # 부품 데이터 데이터프레임으로 변환
+        df_parts = pd.DataFrame(parts_data)
+        df_parts['월'] = df_parts['교체시간'].dt.month
         
-        fig = px.bar(
-            x=worker_counts.index,
-            y=worker_counts.values,
-            labels={
-                'x': get_report_text("worker", lang), 
-                'y': get_report_text("repairs", lang)
-            }
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        # 고장 유형 분석 탭
+        with tabs[0]:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # 오류 코드별 발생 횟수
+                error_counts = df_errors['오류코드'].value_counts().reset_index()
+                error_counts.columns = [get_report_text("error_code", lang), get_report_text("occurrences", lang)]
+                
+                fig_error_counts = px.bar(
+                    error_counts,
+                    x=get_report_text("error_code", lang),
+                    y=get_report_text("occurrences", lang),
+                    title=get_report_text("occurrences_by_error_code", lang)
+                )
+                st.plotly_chart(fig_error_counts, use_container_width=True)
+            
+            with col2:
+                # 시간대별 고장 발생 추이
+                hour_counts = df_errors['시간'].value_counts().reset_index()
+                hour_counts.columns = [get_report_text("hour", lang), get_report_text("occurrences", lang)]
+                hour_counts = hour_counts.sort_values(by=get_report_text("hour", lang))
+                
+                fig_hour_counts = px.line(
+                    hour_counts,
+                    x=get_report_text("hour", lang),
+                    y=get_report_text("occurrences", lang),
+                    markers=True,
+                    title=get_report_text("error_trend_by_hour", lang)
+                )
+                st.plotly_chart(fig_hour_counts, use_container_width=True)
         
-        # 작업자별 평균 수리 시간
-        worker_times = error_history.groupby('작업자')['수리시간'].mean()
+        # 부품 소모 현황 탭
+        with tabs[1]:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # 부품별 교체 횟수
+                part_counts = df_parts['부품코드'].value_counts().reset_index()
+                part_counts.columns = [get_report_text("part_code", lang), get_report_text("replacements", lang)]
+                
+                fig_part_counts = px.bar(
+                    part_counts,
+                    x=get_report_text("part_code", lang),
+                    y=get_report_text("replacements", lang),
+                    title=get_report_text("replacements_by_part", lang)
+                )
+                st.plotly_chart(fig_part_counts, use_container_width=True)
+            
+            with col2:
+                # 부품별 교체 비율
+                fig_part_pie = px.pie(
+                    part_counts,
+                    names=get_report_text("part_code", lang),
+                    values=get_report_text("replacements", lang),
+                    title=get_report_text("replacement_ratio_by_part", lang)
+                )
+                st.plotly_chart(fig_part_pie, use_container_width=True)
+            
+            # 월별 부품 교체 추이
+            monthly_parts = df_parts.groupby('월').size().reset_index()
+            monthly_parts.columns = [get_report_text("month", lang), get_report_text("replacements", lang)]
+            
+            fig_monthly_parts = px.line(
+                monthly_parts,
+                x=get_report_text("month", lang),
+                y=get_report_text("replacements", lang),
+                markers=True,
+                title=get_report_text("monthly_parts_trend", lang)
+            )
+            st.plotly_chart(fig_monthly_parts, use_container_width=True)
         
-        fig = px.bar(
-            x=worker_times.index,
-            y=worker_times.values,
-            labels={
-                'x': get_report_text("worker", lang), 
-                'y': get_report_text("avg_repair_time", lang)
-            },
-            title=get_report_text("avg_repair_time_by_worker", lang)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    
-    # 다운타임 분석
-    with tab4:
-        st.subheader(get_report_text("downtime_by_equipment", lang))
-        equipment_downtime = error_history.groupby('설비번호')['수리시간'].sum()
+        # 작업자별 통계 탭
+        with tabs[2]:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # 작업자별 처리 건수
+                worker_counts = df_errors['작업자'].value_counts().reset_index()
+                worker_counts.columns = [get_report_text("worker", lang), get_report_text("repairs", lang)]
+                
+                fig_worker_counts = px.bar(
+                    worker_counts,
+                    x=get_report_text("worker", lang),
+                    y=get_report_text("repairs", lang),
+                    title=get_report_text("repairs_by_worker", lang)
+                )
+                st.plotly_chart(fig_worker_counts, use_container_width=True)
+            
+            with col2:
+                # 작업자별 평균 수리 시간
+                worker_repair_times = df_errors.groupby('작업자')['수리시간'].mean().reset_index()
+                worker_repair_times.columns = [get_report_text("worker", lang), get_report_text("avg_repair_time", lang)]
+                
+                fig_worker_times = px.bar(
+                    worker_repair_times,
+                    x=get_report_text("worker", lang),
+                    y=get_report_text("avg_repair_time", lang),
+                    title=get_report_text("avg_repair_time_by_worker", lang)
+                )
+                st.plotly_chart(fig_worker_times, use_container_width=True)
         
-        fig = px.bar(
-            x=equipment_downtime.index,
-            y=equipment_downtime.values,
-            labels={
-                'x': get_report_text("equipment_number", lang), 
-                'y': get_report_text("total_downtime", lang)
-            }
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        # 다운타임 분석 탭
+        with tabs[3]:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # 설비별 다운타임
+                equipment_downtime = df_errors.groupby('설비번호')['수리시간'].sum().reset_index()
+                equipment_downtime.columns = [get_report_text("equipment_number", lang), get_report_text("total_downtime", lang)]
+                
+                fig_equipment_downtime = px.bar(
+                    equipment_downtime,
+                    x=get_report_text("equipment_number", lang),
+                    y=get_report_text("total_downtime", lang),
+                    title=get_report_text("downtime_by_equipment", lang)
+                )
+                st.plotly_chart(fig_equipment_downtime, use_container_width=True)
+            
+            with col2:
+                # 오류 코드별 평균 수리 시간
+                error_repair_times = df_errors.groupby('오류코드')['수리시간'].mean().reset_index()
+                error_repair_times.columns = [get_report_text("error_code", lang), get_report_text("avg_repair_time", lang)]
+                
+                fig_error_times = px.bar(
+                    error_repair_times,
+                    x=get_report_text("error_code", lang),
+                    y=get_report_text("avg_repair_time", lang),
+                    title=get_report_text("avg_repair_time_by_error", lang)
+                )
+                st.plotly_chart(fig_error_times, use_container_width=True)
         
-        # 오류 코드별 평균 수리 시간
-        error_repair_time = error_history.groupby('오류코드')['수리시간'].mean()
-        
-        fig = px.bar(
-            x=error_repair_time.index,
-            y=error_repair_time.values,
-            labels={
-                'x': get_report_text("error_code", lang), 
-                'y': get_report_text("avg_repair_time", lang)
-            },
-            title=get_report_text("avg_repair_time_by_error", lang)
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # 통계 요약
+        # 통계 요약 (아래쪽에 표시)
         st.subheader(get_report_text("statistics_summary", lang))
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.metric(
                 get_report_text("average_repair_time", lang),
-                f"{error_history['수리시간'].mean():.1f} {get_report_text('minutes', lang)}"
+                f"{df_errors['수리시간'].mean():.1f} {get_report_text('minutes', lang)}"
             )
+        
         with col2:
             st.metric(
                 get_report_text("max_repair_time", lang),
-                f"{error_history['수리시간'].max()} {get_report_text('minutes', lang)}"
+                f"{df_errors['수리시간'].max()} {get_report_text('minutes', lang)}"
             )
+        
         with col3:
             st.metric(
                 get_report_text("total_downtime", lang),
-                f"{error_history['수리시간'].sum()} {get_report_text('minutes', lang)}"
-            ) 
+                f"{df_errors['수리시간'].sum()} {get_report_text('minutes', lang)}"
+            )
+
+# 원래 함수는 주석 처리합니다
+# def show_reports(lang='ko'):
+#     """보고서 페이지를 표시합니다."""
+#     st.title(get_report_text("reports_title", lang))
+#     
+#     # 탭 생성
+#     tabs = st.tabs([
+#         get_report_text("error_type_analysis", lang),
+#         get_report_text("parts_consumption", lang),
+#         get_report_text("worker_statistics", lang),
+#         get_report_text("downtime_analysis", lang)
+#     ])
+#     
+#     // ... rest of the original function ... 

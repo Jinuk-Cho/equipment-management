@@ -268,355 +268,487 @@ def compress_image(file, max_size=1024, quality=85):
     
     return buffer
 
-def show_data_input(lang='ko'):
-    """데이터 입력 페이지를 표시합니다."""
-    st.title(get_input_text("data_input", lang))
-    
-    # 세션 상태에 입력 내역 저장하기 위한 초기화
-    if 'input_history' not in st.session_state:
-        st.session_state.input_history = []
-    
-    # 설비 번호를 위한 상태 초기화
-    if 'equipment_number' not in st.session_state:
-        st.session_state.equipment_number = 1
-    
-    # 시리얼 번호를 위한 상태 초기화
-    if 'serial_number' not in st.session_state:
-        st.session_state.serial_number = get_serial_number(1)
-    
-    # 설비 번호에 따른 시리얼 번호 자동 업데이트 함수
-    def update_serial_number():
-        equipment_number = st.session_state.equipment_number
-        serial = get_serial_number(equipment_number)
-        if serial:
-            st.session_state.serial_number = serial
-        else:
-            st.session_state.serial_number = get_input_text("no_serial_found", lang)
-    
-    # 예시 데이터
-    error_codes = ['E001', 'E002', 'E003', 'E004', 'E005']
-    parts_list = ['P001', 'P002', 'P003', 'P004']
-    
-    # 설명 추가
-    st.info(get_input_text("equipment_no_info", lang))
-    
-    # 폼 외부에서 설비 번호 입력 받기
-    eq_num_col1, eq_num_col2 = st.columns([1, 3])
-    with eq_num_col1:
-        temp_equipment_number = st.number_input(
-            get_input_text("equipment_number", lang),
-            min_value=1,
-            max_value=800,
-            value=st.session_state.equipment_number,
-            step=1,
-            key="temp_equipment_number",
-            on_change=update_serial_number
-        )
-    
-    # 폼 외부에서 설비 번호 변경 시 세션 상태 업데이트
-    if temp_equipment_number != st.session_state.equipment_number:
-        st.session_state.equipment_number = temp_equipment_number
-        st.session_state.serial_number = get_serial_number(temp_equipment_number) or get_input_text("no_serial_found", lang)
-    
-    with eq_num_col2:
-        st.text_input(
-            get_input_text("serial_number_auto", lang),
-            value=st.session_state.serial_number,
-            disabled=True,
-            key="temp_serial_number"
-        )
-    
-    # 입력 폼
-    with st.form("data_input_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+class DataInputComponent:
+    def __init__(self):
+        pass
         
-        with col1:
-            # 폼 내에서는 세션 상태의 값을 사용
-            st.text_input(
-                get_input_text("equipment_number", lang),
-                value=str(st.session_state.equipment_number),
-                disabled=True,
-                key="form_equipment_number"
-            )
-            
-            st.text_input(
-                get_input_text("serial_number_auto", lang),
-                value=st.session_state.serial_number,
-                disabled=True,
-                key="form_serial_number"
-            )
-            
-            error_code = st.selectbox(get_input_text("error_code", lang), error_codes)
-            error_detail = st.text_area(get_input_text("error_detail", lang))
+    def render(self):
+        """데이터 입력 페이지를 표시합니다."""
+        lang = st.session_state.language
         
-        with col2:
-            # 정지 사유 선택 추가
-            stop_reasons = [
-                get_input_text("stop_reason_pm", lang),
-                get_input_text("stop_reason_model_change", lang),
-                get_input_text("stop_reason_material_wait", lang),
-                get_input_text("stop_reason_planned", lang)
-            ]
+        st.title(get_input_text("data_input", lang))
+        
+        # 입력 유형 선택
+        input_tabs = st.tabs([
+            "오류 입력",
+            "부품교체 입력",
+            "모델교체 입력",
+            "설비 정지 입력"
+        ])
+        
+        # 오류 입력 탭
+        with input_tabs[0]:
+            self.render_error_input(lang)
             
-            stop_reason = st.selectbox(
-                get_input_text("stop_reason", lang),
-                options=stop_reasons
-            )
+        # 부품교체 입력 탭
+        with input_tabs[1]:
+            self.render_parts_input(lang)
             
-            # 정지 시작 시간 (기본값: 현재 시간)
-            stop_start_time = st.datetime_input(
-                get_input_text("stop_start_time", lang),
-                value=datetime.now()
-            )
+        # 모델교체 입력 탭
+        with input_tabs[2]:
+            self.render_model_change_input(lang)
             
-            # 정지 종료 시간 (선택 사항)
-            stop_end_time = st.datetime_input(
-                get_input_text("stop_end_time", lang),
-                value=datetime.now() + timedelta(minutes=30)
-            )
+        # 설비 정지 입력 탭
+        with input_tabs[3]:
+            self.render_equipment_stop_input(lang)
+    
+    def render_error_input(self, lang):
+        """오류 입력 폼을 렌더링합니다."""
+        with st.form("error_input_form"):
+            col1, col2 = st.columns(2)
             
-            # 정지 시간 계산 및 표시 (분 단위)
-            if stop_end_time > stop_start_time:
-                duration_minutes = (stop_end_time - stop_start_time).total_seconds() / 60
-                stop_duration = st.number_input(
-                    get_input_text("stop_duration", lang),
-                    value=int(duration_minutes),
-                    step=1,
-                    min_value=1
-                )
-            else:
-                st.error("종료 시간은 시작 시간보다 이후여야 합니다.")
-                stop_duration = 0
-            
-            # 선택된 정지 사유가 모델 교체인 경우 추가 입력 필드 표시
-            if stop_reason == get_input_text("stop_reason_model_change", lang):
-                # 샘플 모델명 리스트
-                model_list = ['M001', 'M002', 'M003', 'M004', 'M005', 'M006']
+            with col1:
+                equipment_number = st.text_input(get_input_text("equipment_number", lang))
+                st.caption(get_input_text("equipment_no_info", lang))
                 
-                model_from = st.selectbox(
-                    get_input_text("model_name_from", lang),
-                    options=model_list
+                serial_number = st.text_input(
+                    get_input_text("serial_number_auto", lang),
+                    disabled=True
                 )
                 
-                model_to = st.selectbox(
-                    get_input_text("model_name_to", lang),
-                    options=model_list
+                error_code = st.text_input(get_input_text("error_code", lang))
+                
+            with col2:
+                error_detail = st.text_area(get_input_text("error_detail", lang))
+                repair_time = st.number_input(
+                    get_input_text("repair_time", lang),
+                    min_value=1,
+                    value=30
                 )
                 
-                model_change_details = st.text_area(
-                    get_input_text("model_change_details", lang),
-                    height=100
-                )
+            col3, col4 = st.columns(2)
+            with col3:
+                worker = st.text_input(get_input_text("worker", lang))
+            with col4:
+                supervisor = st.text_input(get_input_text("supervisor", lang))
             
-            repair_time = st.number_input(get_input_text("repair_time", lang), min_value=1, max_value=480)
-            part_code = st.selectbox(get_input_text("part_code", lang), parts_list)
-            worker = st.text_input(get_input_text("worker", lang))
-            supervisor = st.text_input(get_input_text("supervisor", lang))
-        
-        # 이미지 업로드 (최대 10개로 제한)
-        st.subheader(get_input_text("related_images", lang))
-        uploaded_files = st.file_uploader(
-            get_input_text("select_images", lang),
-            type=['jpg', 'jpeg', 'png'],
-            accept_multiple_files=True
-        )
-        
-        # 이미지 미리보기 (최대 10개만 표시)
-        if uploaded_files:
-            st.subheader(get_input_text("image_preview", lang))
-            # 10개로 제한
-            limited_files = uploaded_files[:10]
-            if len(uploaded_files) > 10:
-                st.warning(f"최대 10개의 이미지만 업로드할 수 있습니다. 처음 10개만 사용됩니다.")
+            # 이미지 파일 업로더
+            st.subheader(get_input_text("related_images", lang))
+            uploaded_files = st.file_uploader(
+                get_input_text("select_images", lang),
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True
+            )
             
-            cols = st.columns(5)
-            for idx, file in enumerate(limited_files):
-                with cols[idx % 5]:
-                    st.image(file, use_column_width=True)
-                    st.caption(f"{get_input_text('image', lang)} {idx + 1}")
-        
-        submitted = st.form_submit_button(get_input_text("save", lang))
-        
-        if submitted:
-            if not all([str(st.session_state.equipment_number), st.session_state.serial_number, error_code, error_detail, repair_time, worker, supervisor]):
-                st.error(get_input_text("fill_all_fields", lang))
-            else:
-                # 이미지 저장
-                image_paths = []
-                if uploaded_files:
-                    save_dir = f"uploads/{datetime.now().strftime('%Y%m%d')}"
-                    os.makedirs(save_dir, exist_ok=True)
-                    
-                    # 10개로 제한
-                    limited_files = uploaded_files[:10]
-                    
-                    for idx, file in enumerate(limited_files):
-                        # 이미지 압축
-                        try:
-                            compressed_file = compress_image(file)
-                            file_path = os.path.join(save_dir, f"{st.session_state.equipment_number}_{datetime.now().strftime('%H%M%S')}_{idx+1}.jpg")
-                            with open(file_path, "wb") as f:
-                                f.write(compressed_file.getbuffer())
-                            image_paths.append(file_path)
-                        except Exception as e:
-                            st.error(f"이미지 압축 중 오류 발생: {str(e)}")
-                            # 압축 실패 시 원본 이미지 저장
-                            file_path = os.path.join(save_dir, f"{st.session_state.equipment_number}_{datetime.now().strftime('%H%M%S')}_{idx+1}{os.path.splitext(file.name)[1]}")
-                            with open(file_path, "wb") as f:
-                                f.write(file.getbuffer())
-                            image_paths.append(file_path)
-
-                # 입력 데이터 생성
-                timestamp = datetime.now()
-                timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            # 이미지 미리보기
+            if uploaded_files:
+                st.subheader(get_input_text("image_preview", lang))
+                image_cols = st.columns(min(len(uploaded_files), 4))
                 
-                # 설비 번호 포맷 (예: EQ001)
-                formatted_equipment = f"EQ{st.session_state.equipment_number:03d}"
-                
-                # 세션용 데이터
-                session_data = {
-                    "timestamp": timestamp_str,
-                    "equipment": formatted_equipment,
-                    "serial_number": st.session_state.serial_number,
-                    "error_code": error_code,
-                    "error_detail": error_detail,
-                    "repair_time": repair_time,
-                    "part_code": part_code,
-                    "worker": worker,
-                    "supervisor": supervisor,
-                    "images": len(image_paths)
-                }
-                
-                # Supabase용 에러 히스토리 데이터
-                error_data = {
-                    "timestamp": timestamp_str,
-                    "equipment_number": formatted_equipment,
-                    "serial_number": st.session_state.serial_number,
-                    "error_code": error_code,
-                    "error_detail": error_detail,
-                    "repair_time": repair_time,
-                    "repair_method": f"부품 {part_code} 교체",
-                    "worker": worker,
-                    "supervisor": supervisor,
-                    "image_paths": ",".join(image_paths) if image_paths else ""
-                }
-                
-                # Supabase용 부품 교체 데이터
-                parts_data = {
-                    "timestamp": timestamp_str,
-                    "equipment_number": formatted_equipment,
-                    "serial_number": st.session_state.serial_number,
-                    "part_code": part_code,
-                    "worker": worker,
-                    "supervisor": supervisor
-                }
-                
-                # 데이터 저장
-                success_session = True
-                success_error = False
-                success_parts = False
-                success_model_change = False
-                
-                # 세션 상태에 저장
-                st.session_state.input_history.insert(0, session_data)  # 최신 항목이 맨 위에 오도록 추가
-                
-                # 정지 사유에 따른 처리
-                if stop_reason == get_input_text("stop_reason_model_change", lang):
-                    # 모델 변경 데이터 저장
-                    model_change_data = {
-                        "timestamp": timestamp_str,
-                        "equipment_number": formatted_equipment,
-                        "serial_number": st.session_state.serial_number,
-                        "model_from": model_from,
-                        "model_to": model_to,
-                        "start_time": stop_start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "end_time": stop_end_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "duration_minutes": stop_duration,
-                        "details": model_change_details if 'model_change_details' in locals() else "",
-                        "worker": worker,
-                        "supervisor": supervisor
-                    }
-                    
-                    try:
-                        model_result = add_model_change(model_change_data)
-                        if model_result:
-                            success_model_change = True
-                            st.success(f"모델 변경 데이터가 성공적으로 저장되었습니다.")
-                    except Exception as e:
-                        st.warning(f"모델 변경 데이터 저장 오류: {str(e)}")
-                        
+                for i, file in enumerate(uploaded_files[:10]):  # 최대 10개까지만 표시
+                    with image_cols[i % 4]:
+                        img = Image.open(file)
+                        st.image(img, caption=f"{get_input_text('image', lang)} {i+1}", width=150)
+            
+            # 설비 번호 입력 시 시리얼 번호 자동 조회
+            if equipment_number:
+                serial = get_serial_number(equipment_number)
+                if serial:
+                    serial_number = serial
+                    st.session_state.serial_number = serial
                 else:
-                    # 일반 정지 기록 저장
-                    stop_data = {
-                        "timestamp": timestamp_str,
-                        "equipment_number": formatted_equipment,
-                        "serial_number": st.session_state.serial_number,
-                        "stop_reason": stop_reason,
-                        "start_time": stop_start_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "end_time": stop_end_time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "duration_minutes": stop_duration,
-                        "details": error_detail,
-                        "worker": worker,
-                        "supervisor": supervisor
-                    }
-                    
+                    st.warning(get_input_text("no_serial_found", lang))
+            
+            # 폼 제출 버튼
+            submitted = st.form_submit_button(get_input_text("save", lang))
+            
+            if submitted:
+                # 필수 필드 검증
+                if not all([equipment_number, error_code, error_detail, worker, supervisor]):
+                    st.error(get_input_text("fill_all_fields", lang))
+                else:
                     try:
-                        stop_result = add_equipment_stop(stop_data)
-                        if stop_result:
-                            st.success(f"정지 기록이 성공적으로 저장되었습니다.")
-                    except Exception as e:
-                        st.warning(f"정지 기록 저장 오류: {str(e)}")
-                
-                # Supabase에 저장
-                try:
-                    # 에러 이력 저장
-                    error_result = add_error_history(error_data)
-                    if error_result:
-                        success_error = True
-                    
-                    # 부품 교체 이력 저장
-                    parts_result = add_parts_replacement(parts_data)
-                    if parts_result:
-                        success_parts = True
+                        # 이미지 처리
+                        image_data = []
+                        if uploaded_files:
+                            for file in uploaded_files[:10]:  # 최대 10개까지만 저장
+                                compressed_image = compress_image(file)
+                                image_data.append({
+                                    "filename": file.name,
+                                    "image_data": compressed_image
+                                })
                         
-                    if success_error and success_parts:
-                        if not success_model_change:  # 모델 변경 데이터가 이미 성공 메시지를 표시했다면 중복 표시하지 않음
-                            st.success(get_input_text("save_success", lang))
-                    else:
-                        st.warning(get_input_text("save_session_only", lang))
-                except Exception as e:
-                    st.warning(f"{get_input_text('save_error', lang)}: {str(e)}")
-                    st.info(get_input_text("save_session", lang))
+                        # 데이터 저장
+                        add_error_history(
+                            equipment_number=equipment_number,
+                            serial_number=serial_number or "",
+                            error_code=error_code,
+                            error_detail=error_detail,
+                            repair_time=repair_time,
+                            worker=worker,
+                            supervisor=supervisor,
+                            images=image_data
+                        )
+                        
+                        st.success(get_input_text("save_success", lang))
+                        
+                        # 저장 후 폼 초기화
+                        st.session_state.equipment_number = ""
+                        st.session_state.serial_number = ""
+                        st.session_state.error_code = ""
+                        st.session_state.error_detail = ""
+                        st.session_state.repair_time = 30
+                        st.session_state.worker = ""
+                        st.session_state.supervisor = ""
+                        
+                    except Exception as e:
+                        st.error(f"{get_input_text('save_error', lang)}: {str(e)}")
+                        # 로컬 세션에 저장
+                        if 'error_history' not in st.session_state:
+                            st.session_state.error_history = []
+                        
+                        st.session_state.error_history.append({
+                            "timestamp": datetime.now(),
+                            "equipment_number": equipment_number,
+                            "serial_number": serial_number or "",
+                            "error_code": error_code,
+                            "error_detail": error_detail,
+                            "repair_time": repair_time,
+                            "worker": worker,
+                            "supervisor": supervisor,
+                            "image_count": len(uploaded_files) if uploaded_files else 0
+                        })
+                        
+                        st.info(get_input_text("save_session", lang))
+        
+        # 입력 내역 표시
+        if 'error_history' in st.session_state and st.session_state.error_history:
+            st.subheader(get_input_text("input_history", lang))
+            
+            for i, entry in enumerate(st.session_state.error_history):
+                with st.expander(f"#{i+1} - {entry['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"{get_input_text('equipment_number', lang)}: {entry['equipment_number']}")
+                        st.write(f"{get_input_text('serial_number', lang)}: {entry['serial_number']}")
+                        st.write(f"{get_input_text('error_code', lang)}: {entry['error_code']}")
+                    
+                    with col2:
+                        st.write(f"{get_input_text('error_detail', lang)}: {entry['error_detail']}")
+                        st.write(f"{get_input_text('repair_time', lang)}: {entry['repair_time']} {get_input_text('minutes', lang)}")
+                        st.write(f"{get_input_text('worker', lang)}: {entry['worker']}")
+                        st.write(f"{get_input_text('supervisor', lang)}: {entry['supervisor']}")
+                        if 'image_count' in entry and entry['image_count'] > 0:
+                            st.write(f"{get_input_text('image_count', lang)}: {entry['image_count']}")
     
-    # 입력 내역 표시
-    if st.session_state.input_history:
-        st.subheader(get_input_text("input_history", lang))
+    def render_parts_input(self, lang):
+        """부품 교체 입력 폼을 렌더링합니다."""
+        with st.form("parts_input_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                parts_equipment_number = st.text_input(get_input_text("equipment_number", lang), key="parts_equipment_number")
+                st.caption(get_input_text("equipment_no_info", lang))
+                
+                parts_serial_number = st.text_input(
+                    get_input_text("serial_number_auto", lang),
+                    disabled=True,
+                    key="parts_serial_number"
+                )
+                
+                part_code = st.text_input(get_input_text("part_code", lang))
+                
+            with col2:
+                parts_repair_time = st.number_input(
+                    get_input_text("repair_time", lang),
+                    min_value=1,
+                    value=30,
+                    key="parts_repair_time"
+                )
+                
+            col3, col4 = st.columns(2)
+            with col3:
+                parts_worker = st.text_input(get_input_text("worker", lang), key="parts_worker")
+            with col4:
+                parts_supervisor = st.text_input(get_input_text("supervisor", lang), key="parts_supervisor")
+            
+            # 이미지 파일 업로더
+            st.subheader(get_input_text("related_images", lang))
+            parts_uploaded_files = st.file_uploader(
+                get_input_text("select_images", lang),
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key="parts_uploaded_files"
+            )
+            
+            # 이미지 미리보기
+            if parts_uploaded_files:
+                st.subheader(get_input_text("image_preview", lang))
+                image_cols = st.columns(min(len(parts_uploaded_files), 4))
+                
+                for i, file in enumerate(parts_uploaded_files[:10]):  # 최대 10개까지만 표시
+                    with image_cols[i % 4]:
+                        img = Image.open(file)
+                        st.image(img, caption=f"{get_input_text('image', lang)} {i+1}", width=150)
+            
+            # 설비 번호 입력 시 시리얼 번호 자동 조회
+            if parts_equipment_number:
+                serial = get_serial_number(parts_equipment_number)
+                if serial:
+                    parts_serial_number = serial
+                    st.session_state.parts_serial_number = serial
+                else:
+                    st.warning(get_input_text("no_serial_found", lang))
+            
+            # 폼 제출 버튼
+            parts_submitted = st.form_submit_button(get_input_text("save", lang))
+            
+            if parts_submitted:
+                # 필수 필드 검증
+                if not all([parts_equipment_number, part_code, parts_worker, parts_supervisor]):
+                    st.error(get_input_text("fill_all_fields", lang))
+                else:
+                    try:
+                        # 이미지 처리
+                        image_data = []
+                        if parts_uploaded_files:
+                            for file in parts_uploaded_files[:10]:  # 최대 10개까지만 저장
+                                compressed_image = compress_image(file)
+                                image_data.append({
+                                    "filename": file.name,
+                                    "image_data": compressed_image
+                                })
+                        
+                        # 데이터 저장
+                        add_parts_replacement(
+                            equipment_number=parts_equipment_number,
+                            serial_number=parts_serial_number or "",
+                            part_code=part_code,
+                            repair_time=parts_repair_time,
+                            worker=parts_worker,
+                            supervisor=parts_supervisor,
+                            images=image_data
+                        )
+                        
+                        st.success(get_input_text("save_success", lang))
+                        
+                        # 저장 후 폼 초기화
+                        st.session_state.parts_equipment_number = ""
+                        st.session_state.parts_serial_number = ""
+                        st.session_state.part_code = ""
+                        st.session_state.parts_repair_time = 30
+                        st.session_state.parts_worker = ""
+                        st.session_state.parts_supervisor = ""
+                        
+                    except Exception as e:
+                        st.error(f"{get_input_text('save_error', lang)}: {str(e)}")
+                        # 로컬 세션에 저장
+                        if 'parts_history' not in st.session_state:
+                            st.session_state.parts_history = []
+                        
+                        st.session_state.parts_history.append({
+                            "timestamp": datetime.now(),
+                            "equipment_number": parts_equipment_number,
+                            "serial_number": parts_serial_number or "",
+                            "part_code": part_code,
+                            "repair_time": parts_repair_time,
+                            "worker": parts_worker,
+                            "supervisor": parts_supervisor,
+                            "image_count": len(parts_uploaded_files) if parts_uploaded_files else 0
+                        })
+                        
+                        st.info(get_input_text("save_session", lang))
         
-        # 데이터프레임 생성
-        df = pd.DataFrame(st.session_state.input_history)
-        
-        # 컬럼 이름 변경
-        rename_dict = {
-            "timestamp": get_input_text("input_time", lang),
-            "equipment": get_input_text("equipment_number", lang),
-            "serial_number": get_input_text("serial_number", lang),
-            "error_code": get_input_text("error_code", lang),
-            "error_detail": get_input_text("error_detail", lang),
-            "repair_time": f"{get_input_text('repair_time', lang)} ({get_input_text('minutes', lang)})",
-            "part_code": get_input_text("part_code", lang),
-            "worker": get_input_text("worker", lang),
-            "supervisor": get_input_text("supervisor", lang),
-            "images": get_input_text("image_count", lang)
-        }
-        df = df.rename(columns=rename_dict)
-        
-        # 시각화
-        st.dataframe(df)
+        # 입력 내역 표시
+        if 'parts_history' in st.session_state and st.session_state.parts_history:
+            st.subheader(get_input_text("input_history", lang))
+            
+            for i, entry in enumerate(st.session_state.parts_history):
+                with st.expander(f"#{i+1} - {entry['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"{get_input_text('equipment_number', lang)}: {entry['equipment_number']}")
+                        st.write(f"{get_input_text('serial_number', lang)}: {entry['serial_number']}")
+                        st.write(f"{get_input_text('part_code', lang)}: {entry['part_code']}")
+                    
+                    with col2:
+                        st.write(f"{get_input_text('repair_time', lang)}: {entry['repair_time']} {get_input_text('minutes', lang)}")
+                        st.write(f"{get_input_text('worker', lang)}: {entry['worker']}")
+                        st.write(f"{get_input_text('supervisor', lang)}: {entry['supervisor']}")
+                        if 'image_count' in entry and entry['image_count'] > 0:
+                            st.write(f"{get_input_text('image_count', lang)}: {entry['image_count']}")
     
-    # QR 코드 스캔 기능 (모바일용)
-    st.markdown("---")
-    st.subheader(get_input_text("qr_scan", lang))
-    st.info(get_input_text("qr_info", lang))
+    def render_model_change_input(self, lang):
+        """모델 교체 입력 폼을 렌더링합니다."""
+        with st.form("model_change_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                model_equipment_number = st.text_input(get_input_text("equipment_number", lang), key="model_equipment_number")
+                from_model = st.text_input("이전 모델", key="from_model")
+                
+            with col2:
+                to_model = st.text_input("변경 모델", key="to_model")
+                model_change_time = st.number_input(
+                    "모델 교체 시간 (분)",
+                    min_value=1,
+                    value=30,
+                    key="model_change_time"
+                )
+                
+            col3, col4 = st.columns(2)
+            with col3:
+                model_worker = st.text_input(get_input_text("worker", lang), key="model_worker")
+            with col4:
+                model_supervisor = st.text_input(get_input_text("supervisor", lang), key="model_supervisor")
+            
+            # 폼 제출 버튼
+            model_submitted = st.form_submit_button(get_input_text("save", lang))
+            
+            if model_submitted:
+                # 필수 필드 검증
+                if not all([model_equipment_number, from_model, to_model, model_worker, model_supervisor]):
+                    st.error(get_input_text("fill_all_fields", lang))
+                else:
+                    try:
+                        # 데이터 저장
+                        add_model_change(
+                            equipment_number=model_equipment_number,
+                            from_model=from_model,
+                            to_model=to_model,
+                            change_time=model_change_time,
+                            worker=model_worker,
+                            supervisor=model_supervisor
+                        )
+                        
+                        st.success(get_input_text("save_success", lang))
+                        
+                        # 저장 후 폼 초기화
+                        st.session_state.model_equipment_number = ""
+                        st.session_state.from_model = ""
+                        st.session_state.to_model = ""
+                        st.session_state.model_change_time = 30
+                        st.session_state.model_worker = ""
+                        st.session_state.model_supervisor = ""
+                        
+                    except Exception as e:
+                        st.error(f"{get_input_text('save_error', lang)}: {str(e)}")
+                        # 로컬 세션에 저장
+                        if 'model_change_history' not in st.session_state:
+                            st.session_state.model_change_history = []
+                        
+                        st.session_state.model_change_history.append({
+                            "timestamp": datetime.now(),
+                            "equipment_number": model_equipment_number,
+                            "from_model": from_model,
+                            "to_model": to_model,
+                            "change_time": model_change_time,
+                            "worker": model_worker,
+                            "supervisor": model_supervisor
+                        })
+                        
+                        st.info(get_input_text("save_session", lang))
+    
+    def render_equipment_stop_input(self, lang):
+        """설비 정지 입력 폼을 렌더링합니다."""
+        with st.form("equipment_stop_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                stop_equipment_number = st.text_input(get_input_text("equipment_number", lang), key="stop_equipment_number")
+                
+                stop_reason = st.selectbox(
+                    get_input_text("stop_reason", lang),
+                    [
+                        get_input_text("stop_reason_pm", lang),
+                        get_input_text("stop_reason_model_change", lang),
+                        get_input_text("stop_reason_material_wait", lang),
+                        get_input_text("stop_reason_planned", lang)
+                    ],
+                    key="stop_reason"
+                )
+                
+            with col2:
+                stop_start_time = st.datetime_input(
+                    get_input_text("stop_start_time", lang),
+                    value=datetime.now(),
+                    key="stop_start_time"
+                )
+                
+                stop_duration = st.number_input(
+                    "정지 시간 (분)",
+                    min_value=1,
+                    value=30,
+                    key="stop_duration"
+                )
+                
+            col3, col4 = st.columns(2)
+            with col3:
+                stop_worker = st.text_input(get_input_text("worker", lang), key="stop_worker")
+            with col4:
+                stop_supervisor = st.text_input(get_input_text("supervisor", lang), key="stop_supervisor")
+            
+            # 추가 설명
+            stop_detail = st.text_area("추가 설명", key="stop_detail")
+            
+            # 폼 제출 버튼
+            stop_submitted = st.form_submit_button(get_input_text("save", lang))
+            
+            if stop_submitted:
+                # 필수 필드 검증
+                if not all([stop_equipment_number, stop_worker, stop_supervisor]):
+                    st.error(get_input_text("fill_all_fields", lang))
+                else:
+                    try:
+                        # 데이터 저장
+                        add_equipment_stop(
+                            equipment_number=stop_equipment_number,
+                            stop_reason=stop_reason,
+                            start_time=stop_start_time,
+                            duration_minutes=stop_duration,
+                            worker=stop_worker,
+                            supervisor=stop_supervisor,
+                            details=stop_detail
+                        )
+                        
+                        st.success(get_input_text("save_success", lang))
+                        
+                        # 저장 후 폼 초기화
+                        st.session_state.stop_equipment_number = ""
+                        st.session_state.stop_reason = get_input_text("stop_reason_pm", lang)
+                        st.session_state.stop_start_time = datetime.now()
+                        st.session_state.stop_duration = 30
+                        st.session_state.stop_worker = ""
+                        st.session_state.stop_supervisor = ""
+                        st.session_state.stop_detail = ""
+                        
+                    except Exception as e:
+                        st.error(f"{get_input_text('save_error', lang)}: {str(e)}")
+                        # 로컬 세션에 저장
+                        if 'equipment_stop_history' not in st.session_state:
+                            st.session_state.equipment_stop_history = []
+                        
+                        st.session_state.equipment_stop_history.append({
+                            "timestamp": datetime.now(),
+                            "equipment_number": stop_equipment_number,
+                            "stop_reason": stop_reason,
+                            "start_time": stop_start_time,
+                            "duration": stop_duration,
+                            "worker": stop_worker,
+                            "supervisor": stop_supervisor,
+                            "details": stop_detail
+                        })
+                        
+                        st.info(get_input_text("save_session", lang))
+
+
+# 원래 함수는 주석 처리합니다
+# def show_data_input(lang='ko'):
+#     """데이터 입력 페이지를 표시합니다."""
+#     st.title(get_input_text("data_input", lang))
+#     // ... rest of the original function ...
 
 # Supabase에서 설비 정보를 가져오는 함수
 def get_equipment_from_supabase(equipment_number, serial_number=None):
