@@ -26,7 +26,7 @@ class DashboardComponent:
             self.render_parts_stats()
         
         # 예시 데이터 생성
-        equipment_list = generate_equipment_data(lang)
+        equipment_list = generate_equipment_data(st.session_state.language)
         error_history = generate_error_data(datetime.now() - timedelta(days=30), datetime.now())
         parts_history = generate_parts_data(datetime.now() - timedelta(days=30), datetime.now())
         
@@ -46,7 +46,7 @@ class DashboardComponent:
                 fig_status = px.pie(
                     values=status_counts.values,
                     names=status_counts.index,
-                    title=get_text("equipment_status_distribution", lang),
+                    title=get_text("equipment_status_distribution", st.session_state.language),
                     height=300
                 )
                 fig_status.update_layout(margin=dict(l=10, r=10, t=40, b=10))
@@ -58,10 +58,10 @@ class DashboardComponent:
                 fig_error_types = px.bar(
                     x=error_types.index,
                     y=error_types.values,
-                    title=get_text("error_distribution", lang),
+                    title=get_text("error_distribution", st.session_state.language),
                     labels={
-                        'x': get_text("error_code", lang), 
-                        'y': get_text("count", lang)
+                        'x': get_text("error_code", st.session_state.language), 
+                        'y': get_text("count", st.session_state.language)
                     },
                     height=300
                 )
@@ -78,10 +78,10 @@ class DashboardComponent:
                     daily_errors,
                     x='date',
                     y='count',
-                    title=get_text("daily_errors", lang),
+                    title=get_text("daily_errors", st.session_state.language),
                     labels={
-                        'date': get_text("date", lang), 
-                        'count': get_text("count", lang)
+                        'date': get_text("date", st.session_state.language), 
+                        'count': get_text("count", st.session_state.language)
                     },
                     height=300
                 )
@@ -94,10 +94,10 @@ class DashboardComponent:
                 fig_parts_types = px.bar(
                     x=parts_counts.index,
                     y=parts_counts.values,
-                    title=get_text("parts_replacement", lang),
+                    title=get_text("parts_replacement", st.session_state.language),
                     labels={
-                        'x': get_text("part_code", lang), 
-                        'y': get_text("count", lang)
+                        'x': get_text("part_code", st.session_state.language), 
+                        'y': get_text("count", st.session_state.language)
                     },
                     height=300
                 )
@@ -109,18 +109,18 @@ class DashboardComponent:
         
         with col1:
             st.metric(
-                get_text("average_repair_time", lang),
-                f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', lang)}"
+                get_text("average_repair_time", st.session_state.language),
+                f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', st.session_state.language)}"
             )
         with col2:
             st.metric(
-                get_text("max_repair_time", lang),
-                f"{df_errors['repair_time'].max()} {get_text('minutes', lang)}"
+                get_text("max_repair_time", st.session_state.language),
+                f"{df_errors['repair_time'].max()} {get_text('minutes', st.session_state.language)}"
             )
         with col3:
             st.metric(
-                get_text("total_downtime", lang),
-                f"{df_errors['repair_time'].sum()} {get_text('minutes', lang)}"
+                get_text("total_downtime", st.session_state.language),
+                f"{df_errors['repair_time'].sum()} {get_text('minutes', st.session_state.language)}"
             )
 
     def render_suspended_plans(self):
