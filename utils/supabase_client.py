@@ -231,15 +231,16 @@ def sign_up_user(email, password, role="user"):
         return None
 
 # 설비 목록 관련 함수
-def get_equipment_list():
-    if not supabase:
-        return []
-    try:
-        response = supabase.table('equipment').select("*").execute()
-        return response.data
-    except Exception as e:
-        st.error(f"데이터 조회 오류: {str(e)}")
-        return []
+# 중복된 함수를 삭제합니다.
+# def get_equipment_list():
+#     if not supabase:
+#         return []
+#     try:
+#         response = supabase.table('equipment').select("*").execute()
+#         return response.data
+#     except Exception as e:
+#         st.error(f"데이터 조회 오류: {str(e)}")
+#         return []
 
 def add_equipment(equipment_data):
     if not supabase:
