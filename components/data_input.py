@@ -331,7 +331,7 @@ class DataInputComponent:
                 worker = st.text_input(get_input_text("worker", lang))
             with col4:
                 supervisor = st.text_input(get_input_text("supervisor", lang))
-            
+        
             # 이미지 파일 업로더
             st.subheader(get_input_text("related_images", lang))
             uploaded_files = st.file_uploader(
@@ -741,8 +741,8 @@ class DataInputComponent:
                             "details": stop_detail
                         })
                         
-                        st.info(get_input_text("save_session", lang))
-
+                    st.info(get_input_text("save_session", lang))
+    
 
 # 원래 함수는 주석 처리합니다
 # def show_data_input(lang='ko'):

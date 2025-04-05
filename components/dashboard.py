@@ -14,17 +14,6 @@ class DashboardComponent:
     def render(self):
         st.title(get_text("dashboard", st.session_state.language))
         
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            self.render_equipment_status()
-        
-        with col2:
-            self.render_error_stats()
-        
-        with col3:
-            self.render_parts_stats()
-        
         # 예시 데이터 생성
         equipment_list = generate_equipment_data(st.session_state.language)
         error_history = generate_error_data(datetime.now() - timedelta(days=30), datetime.now())
@@ -42,7 +31,27 @@ class DashboardComponent:
         with col1:
             # 설비 상태 요약
             if not df_equipment.empty:
+                # 상태별 카운트
                 status_counts = df_equipment['status'].value_counts()
+                
+                # 설비 상태 요약 지표 표시
+                st.subheader(get_text("equipment_status_summary", st.session_state.language))
+                
+                # 상태별 개수 표시
+                status_cols = st.columns(3)
+                with status_cols[0]:
+                    error_count = status_counts.get(get_text("error", st.session_state.language), 0)
+                    st.metric("고장", f"{error_count}대", delta_color="inverse")
+                    
+                with status_cols[1]:
+                    pm_count = status_counts.get("설비 PM", 0)
+                    st.metric("설비 PM", f"{pm_count}대", delta_color="off")
+                    
+                with status_cols[2]:
+                    model_change_count = status_counts.get("모델 변경", 0)
+                    st.metric("모델 변경", f"{model_change_count}대", delta_color="off")
+                
+                # 파이 차트로 시각화
                 fig_status = px.pie(
                     values=status_counts.values,
                     names=status_counts.index,
@@ -182,7 +191,7 @@ def generate_equipment_data(lang='ko'):
             'equipment_number': 'EQ002',
             'building': 'B동',
             'equipment_type': '컨베이어',
-            'status': get_text("inspection", lang)
+            'status': '설비 PM'
         },
         {
             'equipment_number': 'EQ003',
@@ -200,7 +209,25 @@ def generate_equipment_data(lang='ko'):
             'equipment_number': 'EQ005',
             'building': 'B동',
             'equipment_type': '로봇',
+            'status': '모델 변경'
+        },
+        {
+            'equipment_number': 'EQ006',
+            'building': 'A동',
+            'equipment_type': '컨베이어',
             'status': get_text("normal", lang)
+        },
+        {
+            'equipment_number': 'EQ007',
+            'building': 'C동',
+            'equipment_type': '로봇',
+            'status': get_text("error", lang)
+        },
+        {
+            'equipment_number': 'EQ008',
+            'building': 'B동',
+            'equipment_type': '프레스',
+            'status': '설비 PM'
         }
     ]
     return equipment_data

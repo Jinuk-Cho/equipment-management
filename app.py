@@ -1,4 +1,13 @@
 import streamlit as st
+
+# 페이지 설정
+st.set_page_config(
+    page_title="설비 관리 시스템 | Hệ thống quản lý thiết bị",
+    page_icon="🏭",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import time
 from datetime import datetime, timedelta
 from components.language import get_text, set_language
@@ -21,14 +30,6 @@ ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin")
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "your_supabase_url")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "your_supabase_key")
-
-# 페이지 설정
-st.set_page_config(
-    page_title="설비 관리 시스템 | Hệ thống quản lý thiết bị",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # CSS 스타일 적용
 st.markdown("""
@@ -342,14 +343,16 @@ if st.session_state.user:
                 unsafe_allow_html=True
             )
             
-        # 프로필 링크 처리
-        if st.button(get_text('profile', current_lang), key="profile_btn", type="secondary", style="display:none"):
-            set_page('profile')
-            st.rerun()
+        # 프로필 링크 처리 - style 파라미터 제거
+        if False:  # 숨김 처리를 위해 조건을 False로 설정
+            if st.button(get_text('profile', current_lang), key="profile_btn", type="secondary"):
+                set_page('profile')
+                st.rerun()
             
-        # 로그아웃 버튼 처리
-        if st.button(get_text('logout', current_lang), key="logout_btn", type="secondary", style="display:none"):
-            logout()
+        # 로그아웃 버튼 처리 - style 파라미터 제거
+        if False:  # 숨김 처리를 위해 조건을 False로 설정
+            if st.button(get_text('logout', current_lang), key="logout_btn", type="secondary"):
+                logout()
         
         # 메뉴 바
         menu_cols = st.columns(6)
@@ -477,10 +480,11 @@ else:
                 unsafe_allow_html=True
             )
             
-            # 회원가입 링크 처리
-            if st.button(get_text("create_account", current_lang), key="create_account_btn", style="display:none"):
-                st.session_state.auth_view = 'register'
-                st.rerun()
+            # 회원가입 링크 처리 - style 파라미터 제거
+            if False:  # 숨김 처리를 위해 조건을 False로 설정
+                if st.button(get_text("create_account", current_lang), key="create_account_btn"):
+                    st.session_state.auth_view = 'register'
+                    st.rerun()
     else:
         # 회원가입 화면
         with st.container():
