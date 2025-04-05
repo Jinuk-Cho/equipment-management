@@ -271,6 +271,62 @@ TEXTS = {
     "created_at": {
         "ko": "생성일",
         "vi": "Ngày tạo"
+    },
+    "plan_suspension": {
+        "ko": "계획 정지 관리",
+        "vi": "Quản lý tạm dừng kế hoạch"
+    },
+    "suspension_period": {
+        "ko": "정지 기간",
+        "vi": "Thời gian tạm dừng"
+    },
+    "suspension_reason": {
+        "ko": "정지 사유",
+        "vi": "Lý do tạm dừng"
+    },
+    "suspend_plan": {
+        "ko": "계획 정지",
+        "vi": "Tạm dừng kế hoạch"
+    },
+    "resume_plan": {
+        "ko": "정지 해제",
+        "vi": "Tiếp tục kế hoạch"
+    },
+    "plan_suspended": {
+        "ko": "계획이 정지되었습니다.",
+        "vi": "Kế hoạch đã tạm dừng"
+    },
+    "plan_resumed": {
+        "ko": "계획이 재개되었습니다.",
+        "vi": "Kế hoạch đã tiếp tục"
+    }
+}
+
+# ADMIN_TEXTS 딕셔너리 추가
+ADMIN_TEXTS = {
+    "user_management": {
+        "ko": "사용자 관리",
+        "vi": "Quản lý người dùng"
+    },
+    "equipment_management": {
+        "ko": "설비 관리",
+        "vi": "Quản lý thiết bị"
+    },
+    "error_code_management": {
+        "ko": "오류 코드 관리",
+        "vi": "Quản lý mã lỗi"
+    },
+    "parts_management": {
+        "ko": "부품 관리",
+        "vi": "Quản lý linh kiện"
+    },
+    "serial_management": {
+        "ko": "시리얼 관리",
+        "vi": "Quản lý số sê-ri"
+    },
+    "model_management": {
+        "ko": "모델 관리",
+        "vi": "Quản lý model"
     }
 }
 

@@ -56,3 +56,20 @@ class PlanService:
         except Exception as e:
             print(f"Error in suspend_plan: {str(e)}")
             return False 
+
+    def get_suspended_plans(self):
+        query = """
+            SELECT 
+                mp.plan_code,
+                mp.equipment_number,
+                ps.start_date,
+                ps.end_date,
+                ps.reason
+            FROM maintenance_plans mp
+            JOIN plan_suspensions ps ON mp.plan_code = ps.plan_code
+            WHERE mp.status = 'SUSPENDED'
+            AND ps.end_date >= CURRENT_DATE
+            ORDER BY ps.start_date ASC
+        """
+        
+        return self.db.execute_query(query) 

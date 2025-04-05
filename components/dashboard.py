@@ -4,106 +4,170 @@ import pandas as pd
 from datetime import datetime, timedelta
 import random
 from components.language import get_text
+from services.plan_service import PlanService
+from utils.supabase_client import get_equipment_list, get_error_history, get_parts_replacement
 
-def show_dashboard(lang='ko'):
-    """대시보드를 표시합니다."""
-    # 예시 데이터 생성
-    equipment_list = generate_equipment_data(lang)
-    error_history = generate_error_data(datetime.now() - timedelta(days=30), datetime.now())
-    parts_history = generate_parts_data(datetime.now() - timedelta(days=30), datetime.now())
-    
-    # 데이터프레임 변환
-    df_equipment = pd.DataFrame(equipment_list)
-    df_errors = pd.DataFrame(error_history)
-    df_parts = pd.DataFrame(parts_history)
-    
-    # 2x2 그리드 레이아웃
-    col1, col2 = st.columns(2)
-    
-    # 첫 번째 열
-    with col1:
-        # 설비 상태 요약
-        if not df_equipment.empty:
-            status_counts = df_equipment['status'].value_counts()
-            fig_status = px.pie(
-                values=status_counts.values,
-                names=status_counts.index,
-                title=get_text("equipment_status_distribution", lang),
-                height=300
-            )
-            fig_status.update_layout(margin=dict(l=10, r=10, t=40, b=10))
-            st.plotly_chart(fig_status, use_container_width=True)
+class DashboardComponent:
+    def __init__(self):
+        self.plan_service = PlanService()
+
+    def render(self):
+        st.title(get_text("dashboard", st.session_state.language))
         
-        # 고장 유형별 분포
-        if not df_errors.empty:
-            error_types = df_errors['error_code'].value_counts()
-            fig_error_types = px.bar(
-                x=error_types.index,
-                y=error_types.values,
-                title=get_text("error_distribution", lang),
-                labels={
-                    'x': get_text("error_code", lang), 
-                    'y': get_text("count", lang)
-                },
-                height=300
-            )
-            fig_error_types.update_layout(margin=dict(l=10, r=10, t=40, b=10))
-            st.plotly_chart(fig_error_types, use_container_width=True)
-    
-    # 두 번째 열
-    with col2:
-        # 시간별 고장 건수
-        if not df_errors.empty:
-            df_errors['date'] = pd.to_datetime(df_errors['timestamp']).dt.date
-            daily_errors = df_errors.groupby('date').size().reset_index(name='count')
-            fig_errors = px.line(
-                daily_errors,
-                x='date',
-                y='count',
-                title=get_text("daily_errors", lang),
-                labels={
-                    'date': get_text("date", lang), 
-                    'count': get_text("count", lang)
-                },
-                height=300
-            )
-            fig_errors.update_layout(margin=dict(l=10, r=10, t=40, b=10))
-            st.plotly_chart(fig_errors, use_container_width=True)
+        col1, col2, col3 = st.columns(3)
         
-        # 부품별 교체 횟수
-        if not df_parts.empty:
-            parts_counts = df_parts['part_code'].value_counts()
-            fig_parts_types = px.bar(
-                x=parts_counts.index,
-                y=parts_counts.values,
-                title=get_text("parts_replacement", lang),
-                labels={
-                    'x': get_text("part_code", lang), 
-                    'y': get_text("count", lang)
-                },
-                height=300
+        with col1:
+            self.render_equipment_status()
+        
+        with col2:
+            self.render_error_stats()
+        
+        with col3:
+            self.render_parts_stats()
+        
+        # 예시 데이터 생성
+        equipment_list = generate_equipment_data(lang)
+        error_history = generate_error_data(datetime.now() - timedelta(days=30), datetime.now())
+        parts_history = generate_parts_data(datetime.now() - timedelta(days=30), datetime.now())
+        
+        # 데이터프레임 변환
+        df_equipment = pd.DataFrame(equipment_list)
+        df_errors = pd.DataFrame(error_history)
+        df_parts = pd.DataFrame(parts_history)
+        
+        # 2x2 그리드 레이아웃
+        col1, col2 = st.columns(2)
+        
+        # 첫 번째 열
+        with col1:
+            # 설비 상태 요약
+            if not df_equipment.empty:
+                status_counts = df_equipment['status'].value_counts()
+                fig_status = px.pie(
+                    values=status_counts.values,
+                    names=status_counts.index,
+                    title=get_text("equipment_status_distribution", lang),
+                    height=300
+                )
+                fig_status.update_layout(margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig_status, use_container_width=True)
+            
+            # 고장 유형별 분포
+            if not df_errors.empty:
+                error_types = df_errors['error_code'].value_counts()
+                fig_error_types = px.bar(
+                    x=error_types.index,
+                    y=error_types.values,
+                    title=get_text("error_distribution", lang),
+                    labels={
+                        'x': get_text("error_code", lang), 
+                        'y': get_text("count", lang)
+                    },
+                    height=300
+                )
+                fig_error_types.update_layout(margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig_error_types, use_container_width=True)
+        
+        # 두 번째 열
+        with col2:
+            # 시간별 고장 건수
+            if not df_errors.empty:
+                df_errors['date'] = pd.to_datetime(df_errors['timestamp']).dt.date
+                daily_errors = df_errors.groupby('date').size().reset_index(name='count')
+                fig_errors = px.line(
+                    daily_errors,
+                    x='date',
+                    y='count',
+                    title=get_text("daily_errors", lang),
+                    labels={
+                        'date': get_text("date", lang), 
+                        'count': get_text("count", lang)
+                    },
+                    height=300
+                )
+                fig_errors.update_layout(margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig_errors, use_container_width=True)
+            
+            # 부품별 교체 횟수
+            if not df_parts.empty:
+                parts_counts = df_parts['part_code'].value_counts()
+                fig_parts_types = px.bar(
+                    x=parts_counts.index,
+                    y=parts_counts.values,
+                    title=get_text("parts_replacement", lang),
+                    labels={
+                        'x': get_text("part_code", lang), 
+                        'y': get_text("count", lang)
+                    },
+                    height=300
+                )
+                fig_parts_types.update_layout(margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig_parts_types, use_container_width=True)
+        
+        # 통계 요약 - 하단에 배치
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                get_text("average_repair_time", lang),
+                f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', lang)}"
             )
-            fig_parts_types.update_layout(margin=dict(l=10, r=10, t=40, b=10))
-            st.plotly_chart(fig_parts_types, use_container_width=True)
-    
-    # 통계 요약 - 하단에 배치
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            get_text("average_repair_time", lang),
-            f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', lang)}"
-        )
-    with col2:
-        st.metric(
-            get_text("max_repair_time", lang),
-            f"{df_errors['repair_time'].max()} {get_text('minutes', lang)}"
-        )
-    with col3:
-        st.metric(
-            get_text("total_downtime", lang),
-            f"{df_errors['repair_time'].sum()} {get_text('minutes', lang)}"
-        )
+        with col2:
+            st.metric(
+                get_text("max_repair_time", lang),
+                f"{df_errors['repair_time'].max()} {get_text('minutes', lang)}"
+            )
+        with col3:
+            st.metric(
+                get_text("total_downtime", lang),
+                f"{df_errors['repair_time'].sum()} {get_text('minutes', lang)}"
+            )
+
+    def render_suspended_plans(self):
+        st.subheader(get_text("plan_suspension", st.session_state.language))
+        
+        suspended_plans = self.plan_service.get_suspended_plans()
+        
+        if not suspended_plans:
+            st.info(get_text("no_suspended_plans", st.session_state.language))
+            return
+            
+        for plan in suspended_plans:
+            with st.container():
+                col1, col2 = st.columns([2,1])
+                with col1:
+                    st.markdown(f"**{plan['plan_code']}** - {plan['equipment_number']}")
+                    st.markdown(f"{get_text('suspension_period', st.session_state.language)}: "
+                              f"{plan['start_date']} ~ {plan['end_date']}")
+                    st.markdown(f"{get_text('suspension_reason', st.session_state.language)}: {plan['reason']}")
+                with col2:
+                    if st.button(get_text("resume_plan", st.session_state.language), 
+                               key=f"resume_{plan['plan_code']}", type="primary"):
+                        if self.plan_service.resume_plan(plan['plan_code']):
+                            st.success(get_text("plan_resumed", st.session_state.language))
+                            st.rerun()
+                st.divider()
+
+    def render_equipment_status(self):
+        equipment_list = get_equipment_list()
+        if equipment_list:
+            df = pd.DataFrame(equipment_list)
+            fig = px.pie(df, names='status', title=get_text("equipment_status", st.session_state.language))
+            st.plotly_chart(fig)
+
+    def render_error_stats(self):
+        error_history = get_error_history()
+        if error_history:
+            df = pd.DataFrame(error_history)
+            fig = px.bar(df, x='error_code', title=get_text("error_distribution", st.session_state.language))
+            st.plotly_chart(fig)
+
+    def render_parts_stats(self):
+        parts_data = get_parts_replacement()
+        if parts_data:
+            df = pd.DataFrame(parts_data)
+            fig = px.bar(df, x='part_name', title=get_text("parts_replacement", st.session_state.language))
+            st.plotly_chart(fig)
 
 def generate_equipment_data(lang='ko'):
     """설비 데이터 예시를 생성합니다."""
