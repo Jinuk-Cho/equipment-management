@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import streamlit as st  # streamlit import 추가
 
 # supabase import 문제 해결을 위한 try-except 블록
 try:
@@ -20,6 +21,8 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://example.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-api-key")
 
+# Supabase 클라이언트 초기화 (캐싱)
+@st.cache_resource
 def get_supabase():
     """Supabase 클라이언트를 반환합니다."""
     try:
@@ -88,11 +91,6 @@ def get_error_history():
 def get_parts_replacement():
     """부품 교체 이력을 조회합니다."""
     return []
-
-# Supabase 클라이언트 초기화 (캐싱)
-@st.cache_resource
-def get_supabase():
-    return get_supabase()
 
 # Supabase 클라이언트 인스턴스
 supabase = get_supabase()
