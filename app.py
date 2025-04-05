@@ -351,13 +351,14 @@ if not st.session_state.logged_in:
                                 # 일반 사용자의 경우 기존 로직 사용
                                 supabase = get_supabase()
                                 # 사용자 데이터 가져오기
-                                users = fetch_data('users')
-                                if users:
-                                    user_data = next((u for u in users if u['id'] == user.id), None)
+                                try:
+                                    response = supabase.table('users').select('*').eq('id', user.id).execute()
+                                    user_data = response.data[0] if response.data else None
+                                    
                                     if user_data:
                                         st.session_state.logged_in = True
-                                        st.session_state.username = user.user_metadata.get('name', email.split('@')[0])
-                                        st.session_state.email = email
+                                        st.session_state.username = user.user_metadata.get('name', user.email.split('@')[0])
+                                        st.session_state.email = user.email
                                         st.session_state.role = user.user_metadata.get('role', 'user')
                                         st.session_state.login_time = datetime.now()
                                         st.session_state.session_expiry = datetime.now() + timedelta(hours=12)
@@ -370,6 +371,8 @@ if not st.session_state.logged_in:
                                         st.rerun()
                                     else:
                                         st.error(get_text('login_failed', current_lang))
+                                except Exception as e:
+                                    st.error(f"{get_text('login_failed', current_lang)}: {str(e)}")
                         else:
                             st.error(get_text('login_failed', current_lang))
             
