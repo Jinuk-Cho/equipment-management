@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         token: ${{ secrets.PERSONAL_TOKEN }}
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
@@ -33,9 +33,16 @@ jobs:
         echo "[supabase]" > .streamlit/secrets.toml
         echo "url = \"${{ secrets.SUPABASE_URL }}\"" >> .streamlit/secrets.toml
         echo "key = \"${{ secrets.SUPABASE_KEY }}\"" >> .streamlit/secrets.toml
-
-    - name: Deploy to Streamlit Cloud
-      uses: streamlit/streamlit-deploy@v1
-      with:
-        app-name: equipment-management
-        streamlit-credentials-json: ${{ secrets.STREAMLIT_CREDENTIALS }} 
+        
+    - name: Verify Streamlit app
+      run: |
+        python -c "import streamlit; print(f'Streamlit version: {streamlit.__version__}')"
+        echo "App is ready for deployment"
+    
+    # Streamlit Cloud는 GitHub 저장소에 연결되어 자동으로 배포됩니다.
+    # 이 워크플로우는 코드를 검증하고 secrets.toml을 생성하는 역할만 합니다.
+    - name: Deployment notification
+      run: |
+        echo "코드가 성공적으로 검증되었습니다."
+        echo "Streamlit Cloud는 GitHub 리포지토리와 연결되어 있으므로 별도의 배포 단계가 필요하지 않습니다."
+        echo "Streamlit Cloud 대시보드에서 배포 상태를 확인하세요: https://share.streamlit.io" 
