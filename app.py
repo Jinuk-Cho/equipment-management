@@ -228,10 +228,6 @@ if 'current_page' not in st.session_state:
 if 'auth_view' not in st.session_state:
     st.session_state.auth_view = 'login'  # 'login' 또는 'register'
 
-# 언어 변경 함수
-def set_language(lang):
-    st.session_state.language = lang
-
 # 페이지 변경 함수
 def set_page(page):
     st.session_state.current_page = page

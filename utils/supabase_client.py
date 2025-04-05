@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-import streamlit as st  # streamlit import 추가
+import streamlit as st
 
 # supabase import 문제 해결을 위한 try-except 블록
 try:
@@ -22,20 +22,80 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://example.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "your-api-key")
 
 # Supabase 클라이언트 초기화 (캐싱)
-@st.cache_resource
 def get_supabase():
     """Supabase 클라이언트를 반환합니다."""
-    try:
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception as e:
-        print(f"Error creating Supabase client: {e}")
-        # 에러가 발생해도 앱이 중단되지 않도록 빈 객체 반환
-        return {}
+    # 지연 로딩을 통해 st.cache_resource 데코레이터 사용
+    @st.cache_resource
+    def _create_client():
+        try:
+            return create_client(SUPABASE_URL, SUPABASE_KEY)
+        except Exception as e:
+            print(f"Error creating Supabase client: {e}")
+            # 에러가 발생해도 앱이 중단되지 않도록 빈 객체 반환
+            return {}
+    
+    return _create_client()
 
 # 기본 CRUD 함수 정의
 def fetch_data(table):
     """데이터를 조회합니다."""
-    return []
+    try:
+        # 실제 데이터베이스 조회 시도
+        if supabase:
+            response = supabase.table(table).select("*").execute()
+            return response.data
+    except Exception as e:
+        # 오류 발생 시 가상 데이터 반환
+        print(f"테이블 '{table}' 조회 중 오류 발생: {e}")
+    
+    # 테이블에 따라 다른 가상 데이터 반환
+    if table == 'maintenance_plans':
+        return [
+            {
+                'id': 1, 
+                'plan_code': 'MP2023001', 
+                'equipment_number': 'EQ001', 
+                'status': 'ACTIVE',
+                'start_date': '2023-04-01',
+                'end_date': '2023-09-30',
+                'description': '프레스 머신 1 정기 유지보수'
+            },
+            {
+                'id': 2, 
+                'plan_code': 'MP2023002', 
+                'equipment_number': 'EQ002', 
+                'status': 'SUSPENDED',
+                'start_date': '2023-05-15',
+                'end_date': '2023-11-15',
+                'description': '컨베이어 벨트 점검 계획'
+            },
+            {
+                'id': 3, 
+                'plan_code': 'MP2023003', 
+                'equipment_number': 'EQ003', 
+                'status': 'ACTIVE',
+                'start_date': '2023-06-01',
+                'end_date': '2023-12-31',
+                'description': '로봇 암 소프트웨어 업데이트'
+            }
+        ]
+    elif table == 'equipment':
+        return [
+            {'id': 1, 'equipment_number': 'EQ001', 'name': '프레스 머신 1', 'status': '정상', 'location': 'A동 1층'},
+            {'id': 2, 'equipment_number': 'EQ002', 'name': '컨베이어 벨트', 'status': '정상', 'location': 'A동 2층'},
+            {'id': 3, 'equipment_number': 'EQ003', 'name': '로봇 암', 'status': '점검중', 'location': 'B동 1층'},
+            {'id': 4, 'equipment_number': 'EQ004', 'name': '포장기', 'status': '고장', 'location': 'C동 1층'},
+            {'id': 5, 'equipment_number': 'EQ005', 'name': '프레스 머신 2', 'status': '정상', 'location': 'A동 1층'}
+        ]
+    elif table == 'users':
+        return [
+            {'id': 1, 'email': 'admin@example.com', 'name': '관리자', 'role': 'admin'},
+            {'id': 2, 'email': 'user1@example.com', 'name': '사용자1', 'role': 'user'},
+            {'id': 3, 'email': 'user2@example.com', 'name': '사용자2', 'role': 'user'}
+        ]
+    else:
+        # 기본 빈 배열 반환
+        return []
 
 def insert_data(table, data):
     """데이터를 삽입합니다."""
@@ -61,7 +121,23 @@ def sign_up_user(email, password, user_data):
 # 설비 관련 함수
 def get_equipment_list():
     """설비 목록을 조회합니다."""
-    return []
+    try:
+        # 실제 데이터베이스 조회 시도
+        if supabase:
+            response = supabase.table('equipment').select("*").execute()
+            return response.data
+    except Exception as e:
+        # 오류 발생 시 가상 데이터 반환
+        print(f"설비 목록 조회 중 오류 발생: {e}")
+    
+    # 가상 데이터 생성 및 반환
+    return [
+        {'id': 1, 'equipment_number': 'EQ001', 'name': '프레스 머신 1', 'status': '정상', 'location': 'A동 1층'},
+        {'id': 2, 'equipment_number': 'EQ002', 'name': '컨베이어 벨트', 'status': '정상', 'location': 'A동 2층'},
+        {'id': 3, 'equipment_number': 'EQ003', 'name': '로봇 암', 'status': '점검중', 'location': 'B동 1층'},
+        {'id': 4, 'equipment_number': 'EQ004', 'name': '포장기', 'status': '고장', 'location': 'C동 1층'},
+        {'id': 5, 'equipment_number': 'EQ005', 'name': '프레스 머신 2', 'status': '정상', 'location': 'A동 1층'}
+    ]
 
 def get_equipment_serials():
     """설비 시리얼 목록을 조회합니다."""
