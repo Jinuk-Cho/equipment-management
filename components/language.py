@@ -349,4 +349,15 @@ def get_admin_text(key, lang):
     """관리자 페이지용 텍스트를 반환합니다."""
     if key in ADMIN_TEXTS:
         return ADMIN_TEXTS[key].get(lang, ADMIN_TEXTS[key]['ko'])
-    return f"[{key}]" 
+    return f"[{key}]"
+
+def set_language(lang):
+    """
+    세션 상태의 언어를 설정합니다.
+    
+    Args:
+        lang (str): 설정할 언어 코드 ('ko' 또는 'vi')
+    """
+    import streamlit as st
+    st.session_state.language = lang
+    return lang 
