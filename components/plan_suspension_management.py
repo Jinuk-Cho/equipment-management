@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.supabase_client import get_supabase
 from components.language import get_text
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 class PlanSuspensionManagementComponent:
     def __init__(self, lang='ko'):
@@ -35,30 +35,47 @@ class PlanSuspensionManagementComponent:
         st.subheader(get_text("register_new_suspension", self.lang))
         
         with st.form("new_suspension_form"):
-            # 설비 정보
-            equipment_number = st.text_input(get_text("equipment_number", self.lang))
-            
             # 정지 유형 선택
             suspension_type = st.selectbox(
                 get_text("suspension_type", self.lang),
                 ["설비 PM", "모델 변경"]
             )
             
-            # 시작 날짜와 예상 종료 날짜
+            # 공통 정보
             col1, col2 = st.columns(2)
             with col1:
-                start_date = st.date_input(get_text("start_date", self.lang), value=date.today())
-            with col2:
-                estimated_end_date = st.date_input(
-                    get_text("estimated_end_date", self.lang), 
-                    value=date.today() + datetime.timedelta(days=3)
+                equipment_number = st.text_input(get_text("equipment_number", self.lang))
+                building = st.selectbox(
+                    get_text("building", self.lang),
+                    ["A동", "B동", "C동"]
                 )
             
-            # 세부 사유
-            reason = st.text_area(get_text("reason_detail", self.lang))
+            with col2:
+                # 시작 날짜와 예상 종료 날짜
+                start_date = st.date_input(get_text("start_date", self.lang), value=date.today())
+                estimated_end_date = st.date_input(
+                    get_text("estimated_end_date", self.lang), 
+                    value=date.today() + timedelta(days=3)
+                )
             
             # 담당자
             responsible_person = st.text_input(get_text("responsible_person", self.lang))
+            
+            # 유형별 추가 정보
+            if suspension_type == "설비 PM":
+                st.subheader("설비 PM 정보")
+                equipment_name = st.text_input("설비명")
+            else:  # 모델 변경
+                st.subheader("모델 변경 정보")
+                col1, col2 = st.columns(2)
+                with col1:
+                    model_from = st.text_input("기존 모델")
+                    process_name = st.text_input("공정명")
+                with col2:
+                    model_to = st.text_input("신규 모델")
+            
+            # 세부 사유
+            reason = st.text_area(get_text("reason_detail", self.lang))
             
             # 제출 버튼
             submitted = st.form_submit_button(get_text("register", self.lang))
@@ -79,8 +96,17 @@ class PlanSuspensionManagementComponent:
                         "end_date": None,  # 아직 종료되지 않음
                         "reason": reason,
                         "responsible_person": responsible_person,
+                        "building": building,
                         "status": "ACTIVE"
                     }
+                    
+                    # 유형별 추가 데이터
+                    if suspension_type == "설비 PM":
+                        suspension_data["equipment_name"] = equipment_name
+                    else:  # 모델 변경
+                        suspension_data["model_from"] = model_from
+                        suspension_data["model_to"] = model_to
+                        suspension_data["process_name"] = process_name
                     
                     # 실제 환경에서는 다음과 같이 데이터베이스에 저장
                     # result = self.supabase.table('plan_suspensions').insert(suspension_data).execute()
@@ -105,6 +131,7 @@ class PlanSuspensionManagementComponent:
                 {
                     "id": 1,
                     "equipment_number": "EQ001",
+                    "equipment_name": "프레스 머신 1",
                     "plan_id": "설비 PM-EQ001-2023-07-15",
                     "type": "설비 PM",
                     "start_date": "2023-07-15",
@@ -112,6 +139,7 @@ class PlanSuspensionManagementComponent:
                     "end_date": None,
                     "reason": "월간 예방 정비",
                     "responsible_person": "김기술",
+                    "building": "A동",
                     "status": "ACTIVE"
                 },
                 {
@@ -124,6 +152,40 @@ class PlanSuspensionManagementComponent:
                     "end_date": None,
                     "reason": "신규 모델 적용",
                     "responsible_person": "이엔지니어",
+                    "building": "B동",
+                    "model_from": "모델 A",
+                    "model_to": "모델 B",
+                    "process_name": "조립 공정",
+                    "status": "ACTIVE"
+                },
+                {
+                    "id": 3,
+                    "equipment_number": "EQ005",
+                    "equipment_name": "로봇 암 2",
+                    "plan_id": "설비 PM-EQ005-2023-07-12",
+                    "type": "설비 PM",
+                    "start_date": "2023-07-12",
+                    "estimated_end_date": "2023-07-17",
+                    "end_date": None,
+                    "reason": "분기별 점검",
+                    "responsible_person": "박엔지니어",
+                    "building": "A동",
+                    "status": "ACTIVE"
+                },
+                {
+                    "id": 4,
+                    "equipment_number": "EQ008",
+                    "plan_id": "모델 변경-EQ008-2023-07-14",
+                    "type": "모델 변경",
+                    "start_date": "2023-07-14",
+                    "estimated_end_date": "2023-07-21",
+                    "end_date": None,
+                    "reason": "신제품 출시 대응",
+                    "responsible_person": "최기술",
+                    "building": "C동",
+                    "model_from": "모델 X",
+                    "model_to": "모델 Y",
+                    "process_name": "테스트 공정",
                     "status": "ACTIVE"
                 }
             ]
@@ -139,39 +201,142 @@ class PlanSuspensionManagementComponent:
             index=0
         )
         
+        # 건물별 필터링 옵션
+        building_filter = st.selectbox(
+            get_text("filter_by_building", self.lang),
+            ["전체", "A동", "B동", "C동"],
+            index=0
+        )
+        
         # 필터링 적용
+        filtered_data = suspensions_data
         if suspension_type != "전체":
-            filtered_data = [item for item in suspensions_data if item.get("type") == suspension_type]
-        else:
-            filtered_data = suspensions_data
+            filtered_data = [item for item in filtered_data if item.get("type") == suspension_type]
+        
+        if building_filter != "전체":
+            filtered_data = [item for item in filtered_data if item.get("building") == building_filter]
             
         if not filtered_data:
             st.info(get_text("no_suspensions_of_type", self.lang))
             return
+        
+        # 바둑판 배열로 표시
+        if suspension_type == "설비 PM" or suspension_type == "전체":
+            self._display_pm_suspensions(filtered_data)
+        
+        if suspension_type == "모델 변경" or suspension_type == "전체":
+            self._display_model_change_suspensions(filtered_data)
+    
+    def _display_pm_suspensions(self, data):
+        """설비 PM 중인 장비를 바둑판 배열로 표시"""
+        pm_data = [item for item in data if item.get("type") == "설비 PM"]
+        if not pm_data:
+            return
             
-        # 중단된 계획 목록 표시
-        for record in filtered_data:
-            with st.expander(f"{record.get('type', '정지')} - {record.get('equipment_number', 'N/A')} ({record.get('start_date', 'N/A')})"):
-                st.write(f"**{get_text('equipment_number', self.lang)}:** {record.get('equipment_number', 'N/A')}")
-                st.write(f"**{get_text('suspension_type', self.lang)}:** {record.get('type', 'N/A')}")
-                st.write(f"**{get_text('suspension_date', self.lang)}:** {record.get('start_date', 'N/A')}")
-                st.write(f"**{get_text('estimated_end_date', self.lang)}:** {record.get('estimated_end_date', 'N/A')}")
-                st.write(f"**{get_text('reason', self.lang)}:** {record.get('reason', 'N/A')}")
-                st.write(f"**{get_text('responsible_person', self.lang)}:** {record.get('responsible_person', 'N/A')}")
-                
-                # 계획 재개 버튼
-                if st.button(get_text('resume_plan', self.lang), key=f"resume_{record.get('id', 0)}"):
-                    try:
-                        # 계획 재개 처리
-                        update_data = {'end_date': today.isoformat(), 'status': 'COMPLETED'}
-                        # 실제 환경에서는 다음과 같이 업데이트
-                        # result = self.supabase.table('plan_suspensions').update(update_data).eq('id', record['id']).execute()
-                        
-                        # 현재는 성공 메시지만 표시
-                        st.success(get_text('plan_resumed', self.lang))
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"{get_text('database_error', self.lang)}: {str(e)}")
+        st.subheader("설비 PM 현황")
+        today = date.today()
+        
+        # 한 행에 3개씩 표시
+        cols_per_row = 3
+        
+        # 건물별로 그룹화
+        buildings = {}
+        for item in pm_data:
+            building = item.get("building", "기타")
+            if building not in buildings:
+                buildings[building] = []
+            buildings[building].append(item)
+        
+        # 건물별로 표시
+        for building, items in buildings.items():
+            st.markdown(f"### {building}")
+            
+            # 행 개수 계산
+            rows_needed = (len(items) + cols_per_row - 1) // cols_per_row
+            
+            for row in range(rows_needed):
+                cols = st.columns(cols_per_row)
+                for col_idx in range(cols_per_row):
+                    item_idx = row * cols_per_row + col_idx
+                    if item_idx < len(items):
+                        item = items[item_idx]
+                        with cols[col_idx]:
+                            with st.container(border=True):
+                                st.markdown(f"**설비번호:** {item.get('equipment_number', 'N/A')}")
+                                st.markdown(f"**설비명:** {item.get('equipment_name', 'N/A')}")
+                                st.markdown(f"**시작일:** {item.get('start_date', 'N/A')}")
+                                st.markdown(f"**예상종료일:** {item.get('estimated_end_date', 'N/A')}")
+                                st.markdown(f"**담당자:** {item.get('responsible_person', 'N/A')}")
+                                
+                                # 계획 재개 버튼
+                                if st.button(get_text('resume_plan', self.lang), key=f"resume_pm_{item.get('id', 0)}"):
+                                    try:
+                                        # 계획 재개 처리
+                                        update_data = {'end_date': today.isoformat(), 'status': 'COMPLETED'}
+                                        # 실제 환경에서는 다음과 같이 업데이트
+                                        # result = self.supabase.table('plan_suspensions').update(update_data).eq('id', item['id']).execute()
+                                        
+                                        # 현재는 성공 메시지만 표시
+                                        st.success(get_text('plan_resumed', self.lang))
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"{get_text('database_error', self.lang)}: {str(e)}")
+    
+    def _display_model_change_suspensions(self, data):
+        """모델 변경 중인 장비를 바둑판 배열로 표시"""
+        model_data = [item for item in data if item.get("type") == "모델 변경"]
+        if not model_data:
+            return
+            
+        st.subheader("모델 변경 현황")
+        today = date.today()
+        
+        # 한 행에 2개씩 표시 (정보가 많아서 2개로 줄임)
+        cols_per_row = 2
+        
+        # 건물별로 그룹화
+        buildings = {}
+        for item in model_data:
+            building = item.get("building", "기타")
+            if building not in buildings:
+                buildings[building] = []
+            buildings[building].append(item)
+        
+        # 건물별로 표시
+        for building, items in buildings.items():
+            st.markdown(f"### {building}")
+            
+            # 행 개수 계산
+            rows_needed = (len(items) + cols_per_row - 1) // cols_per_row
+            
+            for row in range(rows_needed):
+                cols = st.columns(cols_per_row)
+                for col_idx in range(cols_per_row):
+                    item_idx = row * cols_per_row + col_idx
+                    if item_idx < len(items):
+                        item = items[item_idx]
+                        with cols[col_idx]:
+                            with st.container(border=True):
+                                st.markdown(f"**설비번호:** {item.get('equipment_number', 'N/A')}")
+                                st.markdown(f"**공정명:** {item.get('process_name', 'N/A')}")
+                                st.markdown(f"**변경 사항:** {item.get('model_from', 'N/A')} → {item.get('model_to', 'N/A')}")
+                                st.markdown(f"**시작일:** {item.get('start_date', 'N/A')}")
+                                st.markdown(f"**예상종료일:** {item.get('estimated_end_date', 'N/A')}")
+                                st.markdown(f"**담당자:** {item.get('responsible_person', 'N/A')}")
+                                
+                                # 계획 재개 버튼
+                                if st.button(get_text('resume_plan', self.lang), key=f"resume_model_{item.get('id', 0)}"):
+                                    try:
+                                        # 계획 재개 처리
+                                        update_data = {'end_date': today.isoformat(), 'status': 'COMPLETED'}
+                                        # 실제 환경에서는 다음과 같이 업데이트
+                                        # result = self.supabase.table('plan_suspensions').update(update_data).eq('id', item['id']).execute()
+                                        
+                                        # 현재는 성공 메시지만 표시
+                                        st.success(get_text('plan_resumed', self.lang))
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"{get_text('database_error', self.lang)}: {str(e)}")
     
     def render_suspension_history(self):
         try:
