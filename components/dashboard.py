@@ -8,14 +8,20 @@ from services.plan_service import PlanService
 from utils.supabase_client import get_equipment_list, get_error_history, get_parts_replacement
 
 class DashboardComponent:
-    def __init__(self):
+    def __init__(self, lang=None):
         self.plan_service = PlanService()
+        self.lang = lang if lang else 'kr'
 
     def render(self):
-        st.title(get_text("dashboard", st.session_state.language))
+        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
+        
+        st.title(get_text("dashboard", lang))
         
         # 예시 데이터 생성
-        equipment_list = generate_equipment_data(st.session_state.language)
+        equipment_list = generate_equipment_data(lang)
         error_history = generate_error_data(datetime.now() - timedelta(days=30), datetime.now())
         parts_history = generate_parts_data(datetime.now() - timedelta(days=30), datetime.now())
         
@@ -35,12 +41,12 @@ class DashboardComponent:
                 status_counts = df_equipment['status'].value_counts()
                 
                 # 설비 상태 요약 지표 표시
-                st.subheader(get_text("equipment_status_summary", st.session_state.language))
+                st.subheader(get_text("equipment_status_summary", lang))
                 
                 # 상태별 개수 표시
                 status_cols = st.columns(3)
                 with status_cols[0]:
-                    error_count = status_counts.get(get_text("error", st.session_state.language), 0)
+                    error_count = status_counts.get(get_text("error", lang), 0)
                     st.metric("고장", f"{error_count}대", delta_color="inverse")
                     if error_count > 0 and st.button("상세보기", key="view_error_details"):
                         st.session_state.view_equipment_status = "error"
@@ -67,7 +73,7 @@ class DashboardComponent:
                 fig_status = px.pie(
                     values=status_counts.values,
                     names=status_counts.index,
-                    title=get_text("equipment_status_distribution", st.session_state.language),
+                    title=get_text("equipment_status_distribution", lang),
                     height=300
                 )
                 fig_status.update_layout(margin=dict(l=10, r=10, t=40, b=10))
@@ -79,10 +85,10 @@ class DashboardComponent:
                 fig_error_types = px.bar(
                     x=error_types.index,
                     y=error_types.values,
-                    title=get_text("error_distribution", st.session_state.language),
+                    title=get_text("error_distribution", lang),
                     labels={
-                        'x': get_text("error_code", st.session_state.language), 
-                        'y': get_text("count", st.session_state.language)
+                        'x': get_text("error_code", lang), 
+                        'y': get_text("count", lang)
                     },
                     height=300
                 )
@@ -99,10 +105,10 @@ class DashboardComponent:
                     daily_errors,
                     x='date',
                     y='count',
-                    title=get_text("daily_errors", st.session_state.language),
+                    title=get_text("daily_errors", lang),
                     labels={
-                        'date': get_text("date", st.session_state.language), 
-                        'count': get_text("count", st.session_state.language)
+                        'date': get_text("date", lang), 
+                        'count': get_text("count", lang)
                     },
                     height=300
                 )
@@ -115,10 +121,10 @@ class DashboardComponent:
                 fig_parts_types = px.bar(
                     x=parts_counts.index,
                     y=parts_counts.values,
-                    title=get_text("parts_replacement", st.session_state.language),
+                    title=get_text("parts_replacement", lang),
                     labels={
-                        'x': get_text("part_code", st.session_state.language), 
-                        'y': get_text("count", st.session_state.language)
+                        'x': get_text("part_code", lang), 
+                        'y': get_text("count", lang)
                     },
                     height=300
                 )
@@ -130,27 +136,27 @@ class DashboardComponent:
         
         with col1:
             st.metric(
-                get_text("average_repair_time", st.session_state.language),
-                f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', st.session_state.language)}"
+                get_text("average_repair_time", lang),
+                f"{df_errors['repair_time'].mean():.1f} {get_text('minutes', lang)}"
             )
         with col2:
             st.metric(
-                get_text("max_repair_time", st.session_state.language),
-                f"{df_errors['repair_time'].max()} {get_text('minutes', st.session_state.language)}"
+                get_text("max_repair_time", lang),
+                f"{df_errors['repair_time'].max()} {get_text('minutes', lang)}"
             )
         with col3:
             st.metric(
-                get_text("total_downtime", st.session_state.language),
-                f"{df_errors['repair_time'].sum()} {get_text('minutes', st.session_state.language)}"
+                get_text("total_downtime", lang),
+                f"{df_errors['repair_time'].sum()} {get_text('minutes', lang)}"
             )
 
     def render_suspended_plans(self):
-        st.subheader(get_text("plan_suspension", st.session_state.language))
+        st.subheader(get_text("plan_suspension", self.lang))
         
         suspended_plans = self.plan_service.get_suspended_plans()
         
         if not suspended_plans:
-            st.info(get_text("no_suspended_plans", st.session_state.language))
+            st.info(get_text("no_suspended_plans", self.lang))
             return
             
         for plan in suspended_plans:
@@ -158,14 +164,14 @@ class DashboardComponent:
                 col1, col2 = st.columns([2,1])
                 with col1:
                     st.markdown(f"**{plan['plan_code']}** - {plan['equipment_number']}")
-                    st.markdown(f"{get_text('suspension_period', st.session_state.language)}: "
+                    st.markdown(f"{get_text('suspension_period', self.lang)}: "
                               f"{plan['start_date']} ~ {plan['end_date']}")
-                    st.markdown(f"{get_text('suspension_reason', st.session_state.language)}: {plan['reason']}")
+                    st.markdown(f"{get_text('suspension_reason', self.lang)}: {plan['reason']}")
                 with col2:
-                    if st.button(get_text("resume_plan", st.session_state.language), 
+                    if st.button(get_text("resume_plan", self.lang), 
                                key=f"resume_{plan['plan_code']}", type="primary"):
                         if self.plan_service.resume_plan(plan['plan_code']):
-                            st.success(get_text("plan_resumed", st.session_state.language))
+                            st.success(get_text("plan_resumed", self.lang))
                             st.rerun()
                 st.divider()
 
@@ -173,21 +179,21 @@ class DashboardComponent:
         equipment_list = get_equipment_list()
         if equipment_list:
             df = pd.DataFrame(equipment_list)
-            fig = px.pie(df, names='status', title=get_text("equipment_status", st.session_state.language))
+            fig = px.pie(df, names='status', title=get_text("equipment_status", self.lang))
             st.plotly_chart(fig)
 
     def render_error_stats(self):
         error_history = get_error_history()
         if error_history:
             df = pd.DataFrame(error_history)
-            fig = px.bar(df, x='error_code', title=get_text("error_distribution", st.session_state.language))
+            fig = px.bar(df, x='error_code', title=get_text("error_distribution", self.lang))
             st.plotly_chart(fig)
 
     def render_parts_stats(self):
         parts_data = get_parts_replacement()
         if parts_data:
             df = pd.DataFrame(parts_data)
-            fig = px.bar(df, x='part_name', title=get_text("parts_replacement", st.session_state.language))
+            fig = px.bar(df, x='part_name', title=get_text("parts_replacement", self.lang))
             st.plotly_chart(fig)
 
 def generate_equipment_data(lang='ko'):

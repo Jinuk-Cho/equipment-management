@@ -207,13 +207,16 @@ def generate_sample_data(lang='ko'):
     return pd.DataFrame(error_data), pd.DataFrame(parts_data)
 
 class ReportsComponent:
-    def __init__(self):
-        pass
+    def __init__(self, lang=None):
+        self.lang = lang if lang else 'kr'
         
     def render(self):
-        """보고서 페이지를 표시합니다."""
-        lang = st.session_state.language
-        
+        """보고서 및 통계 페이지를 렌더링합니다."""
+        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
+            
         st.title(get_report_text("reports_title", lang))
         
         # 탭 생성

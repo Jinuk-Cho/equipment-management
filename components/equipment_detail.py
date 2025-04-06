@@ -87,12 +87,16 @@ def get_equipment_text(key, lang):
     return f"[{key}]"
 
 class EquipmentDetailComponent:
-    def __init__(self):
-        pass
+    def __init__(self, lang=None):
+        self.lang = lang if lang else 'kr'
         
     def render(self):
         """장비 상세 정보를 표시합니다."""
-        lang = st.session_state.language
+        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
+            
         st.title(get_equipment_text("equipment_detail", lang))
         
         # 설비 목록 로드 (예시 데이터 사용)

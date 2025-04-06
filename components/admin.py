@@ -3,17 +3,23 @@ from components.language import get_text
 from utils.supabase_client import get_supabase, fetch_data, update_data, delete_data, insert_data
 
 class AdminComponent:
-    def __init__(self):
+    def __init__(self, lang=None):
         self.supabase = get_supabase()
+        self.lang = lang if lang else 'kr'
 
     def render(self):
-        st.title(get_text("admin_settings", st.session_state.language))
+        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
+            
+        st.title(get_text("admin_settings", lang))
         
         # 탭 생성
         tabs = st.tabs([
-            get_text("user_management", st.session_state.language),
-            get_text("equipment_management", st.session_state.language),
-            get_text("error_codes", st.session_state.language)
+            get_text("user_management", lang),
+            get_text("equipment_management", lang),
+            get_text("error_codes", lang)
         ])
         
         with tabs[0]:

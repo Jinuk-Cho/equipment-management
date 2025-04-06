@@ -3,6 +3,12 @@
 한국어 및 베트남어 텍스트를 관리합니다.
 """
 
+# 언어 코드 변환 맵
+LANGUAGE_CODE_MAP = {
+    'kr': 'ko',  # 'kr'은 내부적으로 'ko'로 처리
+    'vn': 'vi'   # 'vn'은 내부적으로 'vi'로 처리
+}
+
 # 언어 텍스트 딕셔너리
 TEXTS = {
     # 공통 UI 요소
@@ -330,34 +336,86 @@ ADMIN_TEXTS = {
     }
 }
 
-def get_text(key, lang):
-    """
-    지정된 키에 대한 텍스트를 선택한 언어로 반환합니다.
-    
-    Args:
-        key (str): 텍스트 키
-        lang (str): 언어 코드 ('ko' 또는 'vi')
-        
-    Returns:
-        str: 선택한 언어의 텍스트
-    """
-    if key in TEXTS:
-        return TEXTS[key].get(lang, TEXTS[key]['ko'])  # 기본값은 한국어
-    return f"[{key}]"  # 키가 없는 경우 키 자체를 반환 
+# DASHBOARD_TEXTS 딕셔너리 추가
+DASHBOARD_TEXTS = {
+    "equipment_status_summary": {
+        "ko": "설비 상태 요약",
+        "vi": "Tóm tắt trạng thái thiết bị"
+    }
+}
 
-def get_admin_text(key, lang):
-    """관리자 페이지용 텍스트를 반환합니다."""
+# EQUIPMENT_TEXTS 딕셔너리 추가
+EQUIPMENT_TEXTS = {
+    "equipment_detail": {
+        "ko": "설비 상세 정보",
+        "vi": "Chi tiết thiết bị"
+    }
+}
+
+# 보고서 관련 텍스트
+REPORTS_TEXTS = {
+    "reports_title": {
+        "ko": "보고서 및 통계",
+        "vi": "Báo cáo và thống kê"
+    }
+}
+
+def _normalize_language_code(lang):
+    """언어 코드를 표준화합니다.
+    입력받은 언어 코드가 'kr'이면 'ko'로, 'vn'이면 'vi'로 변환합니다.
+    """
+    if lang in LANGUAGE_CODE_MAP:
+        return LANGUAGE_CODE_MAP[lang]
+    return lang
+
+def get_text(key, lang='ko'):
+    """특정 키에 해당하는 텍스트를 현재 언어로 반환합니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
+    if key in TEXTS:
+        return TEXTS[key].get(normalized_lang, TEXTS[key].get('ko', f"[{key}]"))
+    return f"[{key}]"
+
+def get_admin_text(key, lang='ko'):
+    """관리자 페이지 전용 텍스트를 가져옵니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
     if key in ADMIN_TEXTS:
-        return ADMIN_TEXTS[key].get(lang, ADMIN_TEXTS[key]['ko'])
+        return ADMIN_TEXTS[key].get(normalized_lang, ADMIN_TEXTS[key].get('ko', f"[{key}]"))
+    return f"[{key}]"
+
+def get_dashboard_text(key, lang='ko'):
+    """대시보드 페이지 전용 텍스트를 가져옵니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
+    if key in DASHBOARD_TEXTS:
+        return DASHBOARD_TEXTS[key].get(normalized_lang, DASHBOARD_TEXTS[key].get('ko', f"[{key}]"))
+    return f"[{key}]"
+
+def get_equipment_text(key, lang='ko'):
+    """설비 상세 페이지 전용 텍스트를 가져옵니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
+    if key in EQUIPMENT_TEXTS:
+        return EQUIPMENT_TEXTS[key].get(normalized_lang, EQUIPMENT_TEXTS[key].get('ko', f"[{key}]"))
+    return f"[{key}]"
+
+def get_report_text(key, lang='ko'):
+    """보고서 페이지 전용 텍스트를 가져옵니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
+    if key in REPORTS_TEXTS:
+        return REPORTS_TEXTS[key].get(normalized_lang, REPORTS_TEXTS[key].get('ko', f"[{key}]"))
     return f"[{key}]"
 
 def set_language(lang):
-    """
-    세션 상태의 언어를 설정합니다.
-    
-    Args:
-        lang (str): 설정할 언어 코드 ('ko' 또는 'vi')
-    """
+    """전역 언어 설정을 변경합니다."""
     import streamlit as st
-    st.session_state.language = lang
+    if 'current_lang' in st.session_state:
+        st.session_state.current_lang = lang
     return lang 

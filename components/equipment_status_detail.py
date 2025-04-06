@@ -3,10 +3,15 @@ import pandas as pd
 from components.language import get_text
 
 class EquipmentStatusDetailComponent:
-    def __init__(self):
-        pass
+    def __init__(self, lang=None):
+        self.lang = lang if lang else 'kr'
         
     def render(self):
+        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
+            
         status_type = st.session_state.get('view_equipment_status', 'error')
         
         # 상태 유형에 따른 제목 설정
