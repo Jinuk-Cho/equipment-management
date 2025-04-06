@@ -1,17 +1,17 @@
 import streamlit as st
-from components.language import get_text
+from components.language import _normalize_language_code, get_text
 from utils.supabase_client import get_supabase, fetch_data, update_data, delete_data, insert_data
 
 class AdminComponent:
     def __init__(self, lang=None):
         self.supabase = get_supabase()
-        self.lang = lang if lang else 'kr'
+        self.lang = lang if lang else 'ko'
 
     def render(self):
-        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
-        lang = self.lang
+        # 언어 코드 표준화
+        lang = _normalize_language_code(self.lang)
         if 'current_lang' in st.session_state:
-            lang = st.session_state.current_lang
+            lang = _normalize_language_code(st.session_state.current_lang)
             
         st.title(get_text("admin_settings", lang))
         

@@ -198,30 +198,34 @@ class DashboardComponent:
 
 def generate_equipment_data(lang='ko'):
     """설비 데이터 예시를 생성합니다."""
+    # 언어 코드 표준화
+    from components.language import _normalize_language_code
+    normalized_lang = _normalize_language_code(lang)
+    
     equipment_data = [
         {
             'equipment_number': 'EQ001',
             'building': 'A동',
             'equipment_type': '프레스',
-            'status': get_text("normal", lang)
+            'status': get_text("normal", normalized_lang)
         },
         {
             'equipment_number': 'EQ002',
             'building': 'B동',
             'equipment_type': '컨베이어',
-            'status': '설비 PM'
+            'status': get_text("inspection", normalized_lang)
         },
         {
             'equipment_number': 'EQ003',
             'building': 'A동',
             'equipment_type': '로봇',
-            'status': get_text("normal", lang)
+            'status': get_text("normal", normalized_lang)
         },
         {
             'equipment_number': 'EQ004',
             'building': 'C동',
             'equipment_type': '프레스',
-            'status': get_text("error", lang)
+            'status': get_text("error", normalized_lang)
         },
         {
             'equipment_number': 'EQ005',
@@ -233,13 +237,13 @@ def generate_equipment_data(lang='ko'):
             'equipment_number': 'EQ006',
             'building': 'A동',
             'equipment_type': '컨베이어',
-            'status': get_text("normal", lang)
+            'status': get_text("normal", normalized_lang)
         },
         {
             'equipment_number': 'EQ007',
             'building': 'C동',
             'equipment_type': '로봇',
-            'status': get_text("error", lang)
+            'status': get_text("error", normalized_lang)
         },
         {
             'equipment_number': 'EQ008',

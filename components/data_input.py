@@ -26,6 +26,7 @@ except ImportError:
 from datetime import datetime, timedelta
 import os
 import json
+import uuid
 
 try:
     from utils.supabase_client import add_error_history, add_parts_replacement, get_serial_by_equipment_number, add_model_change, insert_data, add_equipment_stop
@@ -40,7 +41,7 @@ except ImportError:
     def add_equipment_stop(*args, **kwargs): return None
 
 try:
-    from components.language import get_text
+    from components.language import _normalize_language_code, get_text
 except ImportError:
     print("ERROR: 'components.language' module not found.")
     # 임시 대체 함수
@@ -284,14 +285,14 @@ def compress_image(file, max_size=1024, quality=85):
 
 class DataInputComponent:
     def __init__(self, lang=None):
-        self.lang = lang if lang else 'kr'
+        self.lang = lang if lang else 'ko'
         
     def render(self):
         """데이터 입력 페이지를 표시합니다."""
-        # 로컬 언어 설정 또는 세션 상태에서 가져오기 
-        lang = self.lang
+        # 언어 코드 표준화
+        lang = _normalize_language_code(self.lang)
         if 'current_lang' in st.session_state:
-            lang = st.session_state.current_lang
+            lang = _normalize_language_code(st.session_state.current_lang)
         
         st.title(get_input_text("data_input", lang))
         

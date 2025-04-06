@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.supabase_client import get_supabase
-from components.language import get_text
+from components.language import get_text, _normalize_language_code
 from datetime import datetime, date, timedelta
 import pkg_resources
 
@@ -12,18 +12,23 @@ except:
     supports_border = False  # 버전 확인 실패 시 호환성 없음으로 가정
 
 class PlanSuspensionManagementComponent:
-    def __init__(self, lang='ko'):
-        self.lang = lang
+    def __init__(self, lang=None):
+        self.lang = lang if lang else 'ko'
         self.supabase = get_supabase()
     
     def render(self):
-        st.title(get_text("plan_suspension_management", self.lang))
+        # 언어 코드 표준화
+        lang = _normalize_language_code(self.lang)
+        if 'current_lang' in st.session_state:
+            lang = _normalize_language_code(st.session_state.current_lang)
+        
+        st.title(get_text("plan_suspension_management", lang))
         
         # 중단 중인 계획과 중단 이력 탭 생성
         tab1, tab2, tab3 = st.tabs([
-            get_text("current_suspensions", self.lang),
-            get_text("create_suspension", self.lang),
-            get_text("suspension_history", self.lang)
+            get_text("current_suspensions", lang),
+            get_text("create_suspension", lang),
+            get_text("suspension_history", lang)
         ])
         
         # 중단 중인 계획 탭

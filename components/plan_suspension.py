@@ -1,17 +1,18 @@
 import streamlit as st
 from datetime import datetime, date
 from services.plan_service import PlanService
+from components.language import _normalize_language_code, get_text
 
 class PlanSuspensionComponent:
     def __init__(self, lang=None):
         self.plan_service = PlanService()
-        self.lang = lang if lang else 'kr'
+        self.lang = lang if lang else 'ko'
 
     def render(self, plan_code=None):
-        # 언어 설정: 클래스의 lang 속성 우선 사용, 없으면 세션 상태에서 가져오기
-        lang = self.lang
+        # 언어 코드 표준화
+        lang = _normalize_language_code(self.lang)
         if 'current_lang' in st.session_state:
-            lang = st.session_state.current_lang
+            lang = _normalize_language_code(st.session_state.current_lang)
             
         st.subheader("계획 정지")
         

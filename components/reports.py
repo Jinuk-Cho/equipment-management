@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 import random
-from components.language import get_text
+from components.language import get_text, _normalize_language_code
 
 # 보고서 페이지 텍스트
 REPORTS_TEXTS = {
@@ -133,6 +133,9 @@ def get_report_text(key, lang):
 
 def generate_sample_data(lang='ko'):
     """예시 데이터를 생성합니다."""
+    # 언어 코드 표준화
+    normalized_lang = _normalize_language_code(lang)
+    
     # 현재 날짜를 기준으로 30일 전부터의 데이터 생성
     end_date = datetime.now()
     start_date = end_date - timedelta(days=30)
@@ -145,6 +148,9 @@ def generate_sample_data(lang='ko'):
         'ko': ['김철수', '이영희', '박민수', '정지원'],
         'vi': ['Kim Cheolsu', 'Lee Younghee', 'Park Minsu', 'Jung Jiwon']
     }
+    
+    # 기본값 설정 (언어 코드가 잘못된 경우 한국어 사용)
+    worker_list = workers.get(normalized_lang, workers['ko'])
     
     field_names = {
         'ko': {
@@ -184,7 +190,7 @@ def generate_sample_data(lang='ko'):
             '설비번호': random.choice(equipment_numbers),
             '오류코드': random.choice(error_codes),
             '수리시간': random.randint(10, 120),
-            '작업자': random.choice(workers[lang])
+            '작업자': random.choice(worker_list)
         })
     
     # 부품 교체 데이터
@@ -201,7 +207,7 @@ def generate_sample_data(lang='ko'):
             '교체시간': replacement_time,
             '설비번호': random.choice(equipment_numbers),
             '부품코드': random.choice(part_codes),
-            '작업자': random.choice(workers[lang])
+            '작업자': random.choice(worker_list)
         })
     
     return pd.DataFrame(error_data), pd.DataFrame(parts_data)

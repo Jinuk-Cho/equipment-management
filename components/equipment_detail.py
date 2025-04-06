@@ -170,6 +170,10 @@ class EquipmentDetailComponent:
 # 예시 설비 데이터
 def generate_equipment_data(lang='ko'):
     """설비 데이터 예시를 생성합니다."""
+    # 언어 코드 표준화
+    from components.language import _normalize_language_code
+    normalized_lang = _normalize_language_code(lang)
+    
     buildings = {
         'ko': ['A동', 'B동', 'C동'],
         'vi': ['Tòa nhà A', 'Tòa nhà B', 'Tòa nhà C']
@@ -180,36 +184,40 @@ def generate_equipment_data(lang='ko'):
         'vi': ['Máy ép', 'Băng tải', 'Robot']
     }
     
+    # 기본값 설정 (언어 코드가 잘못된 경우 한국어 사용)
+    building_list = buildings.get(normalized_lang, buildings['ko'])
+    equipment_type_list = equipment_types.get(normalized_lang, equipment_types['ko'])
+    
     equipment_data = [
         {
             'equipment_number': 'EQ001',
-            'building': buildings[lang][0],
-            'equipment_type': equipment_types[lang][0],
-            'status': get_text("normal", lang)
+            'building': building_list[0],
+            'equipment_type': equipment_type_list[0],
+            'status': get_text("normal", normalized_lang)
         },
         {
             'equipment_number': 'EQ002',
-            'building': buildings[lang][1],
-            'equipment_type': equipment_types[lang][1],
-            'status': get_text("inspection", lang)
+            'building': building_list[1],
+            'equipment_type': equipment_type_list[1],
+            'status': get_text("inspection", normalized_lang)
         },
         {
             'equipment_number': 'EQ003',
-            'building': buildings[lang][0],
-            'equipment_type': equipment_types[lang][2],
-            'status': get_text("normal", lang)
+            'building': building_list[0],
+            'equipment_type': equipment_type_list[2],
+            'status': get_text("normal", normalized_lang)
         },
         {
             'equipment_number': 'EQ004',
-            'building': buildings[lang][2],
-            'equipment_type': equipment_types[lang][0],
-            'status': get_text("error", lang)
+            'building': building_list[2],
+            'equipment_type': equipment_type_list[0],
+            'status': get_text("error", normalized_lang)
         },
         {
             'equipment_number': 'EQ005',
-            'building': buildings[lang][1],
-            'equipment_type': equipment_types[lang][2],
-            'status': get_text("normal", lang)
+            'building': building_list[1],
+            'equipment_type': equipment_type_list[2],
+            'status': get_text("normal", normalized_lang)
         }
     ]
     return equipment_data
@@ -217,6 +225,10 @@ def generate_equipment_data(lang='ko'):
 # 예시 고장 이력 데이터
 def generate_error_history(lang='ko'):
     """고장 이력 예시를 생성합니다."""
+    # 언어 코드 표준화
+    from components.language import _normalize_language_code
+    normalized_lang = _normalize_language_code(lang)
+    
     error_codes = ['ERR001', 'ERR002', 'ERR003', 'ERR004', 'ERR005']
     equipment_numbers = ['EQ001', 'EQ002', 'EQ003', 'EQ004', 'EQ005']
     
@@ -252,6 +264,12 @@ def generate_error_history(lang='ko'):
         'vi': 'Quản lý'
     }
     
+    # 기본값 설정 (언어 코드가 잘못된 경우 한국어 사용)
+    worker_list = workers.get(normalized_lang, workers['ko'])
+    repair_method_list = repair_methods.get(normalized_lang, repair_methods['ko'])
+    error_detail = error_details.get(normalized_lang, error_details['ko'])
+    supervisor_text = supervisor.get(normalized_lang, supervisor['ko'])
+    
     error_data = []
     now = datetime.now()
     
@@ -263,11 +281,11 @@ def generate_error_history(lang='ko'):
             'timestamp': timestamp,
             'equipment_number': equipment,
             'error_code': random.choice(error_codes),
-            'error_detail': f'{equipment} {error_details[lang]}',
+            'error_detail': f'{equipment} {error_detail}',
             'repair_time': random.randint(10, 120),
-            'repair_method': random.choice(repair_methods[lang]),
-            'worker': random.choice(workers[lang]),
-            'supervisor': supervisor[lang]
+            'repair_method': random.choice(repair_method_list),
+            'worker': random.choice(worker_list),
+            'supervisor': supervisor_text
         })
     
     return error_data
@@ -275,6 +293,10 @@ def generate_error_history(lang='ko'):
 # 예시 부품 교체 이력 데이터
 def generate_parts_replacement(lang='ko'):
     """부품 교체 이력 예시를 생성합니다."""
+    # 언어 코드 표준화
+    from components.language import _normalize_language_code
+    normalized_lang = _normalize_language_code(lang)
+    
     part_codes = ['P001', 'P002', 'P003', 'P004', 'P005']
     equipment_numbers = ['EQ001', 'EQ002', 'EQ003', 'EQ004', 'EQ005']
     
@@ -288,6 +310,10 @@ def generate_parts_replacement(lang='ko'):
         'vi': 'Quản lý'
     }
     
+    # 기본값 설정 (언어 코드가 잘못된 경우 한국어 사용)
+    worker_list = workers.get(normalized_lang, workers['ko'])
+    supervisor_text = supervisor.get(normalized_lang, supervisor['ko'])
+    
     parts_data = []
     now = datetime.now()
     
@@ -299,8 +325,8 @@ def generate_parts_replacement(lang='ko'):
             'timestamp': timestamp,
             'equipment_number': equipment,
             'part_code': random.choice(part_codes),
-            'worker': random.choice(workers[lang]),
-            'supervisor': supervisor[lang]
+            'worker': random.choice(worker_list),
+            'supervisor': supervisor_text
         })
     
     return parts_data 

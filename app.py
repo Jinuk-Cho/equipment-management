@@ -63,6 +63,10 @@ st.markdown("""
             line-height: 1.2;
             text-align: center;
         }
+        h1.system-title {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
         .system-title-vn {
             color: #1E3A8A;
             margin-bottom: 0.3rem;
@@ -196,31 +200,57 @@ st.markdown("""
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .profile-title {
-            text-align: center;
-            font-size: 1.5rem;
-            margin-bottom: 1.5rem;
-            color: #2563EB;
+        /* 데이터 테이블 스타일 */
+        .dataframe {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
         }
-        .profile-section {
-            margin-bottom: 1.5rem;
+        .dataframe th {
+            background-color: #f1f5f9;
+            padding: 0.5rem;
+            text-align: left;
+            border: 1px solid #e5e7eb;
         }
-        .back-button {
-            margin-top: 1rem;
+        .dataframe td {
+            padding: 0.5rem;
+            border: 1px solid #e5e7eb;
         }
-        /* 계획 정지 관련 스타일 */
-        .suspension-status {
-            padding: 4px 8px;
+        /* 모바일 최적화 */
+        @media (max-width: 768px) {
+            .main .block-container {
+                padding: 0.5rem !important;
+            }
+            .system-title {
+                font-size: 1.2rem;
+            }
+            .user-menu a {
+                font-size: 0.7rem;
+            }
+        }
+        /* 버튼 상태 스타일 */
+        .stButton>button:active {
+            transform: translateY(1px);
+        }
+        /* 스크롤바 스타일 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
             border-radius: 4px;
-            font-weight: bold;
         }
-        .status-suspended {
-            background-color: #FEF3C7;
-            color: #92400E;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
-        .suspension-reason {
-            color: #6B7280;
-            font-style: italic;
+        /* 입력 필드 포커스 효과 */
+        input:focus, textarea:focus, select:focus {
+            border-color: #2563EB !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -239,7 +269,7 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = 'dashboard'
 
 if 'current_lang' not in st.session_state:
-    st.session_state.current_lang = 'kr'
+    st.session_state.current_lang = 'ko'  # 기본 언어를 'ko'로 설정
 
 if 'last_activity' not in st.session_state:
     st.session_state.last_activity = datetime.now()
@@ -272,17 +302,25 @@ def update_user_profile(user_id, name, department, phone):
         return False
 
 # 언어 선택 초기화
-current_lang = st.session_state.current_lang
+if 'current_lang' not in st.session_state:
+    st.session_state.current_lang = 'ko'  # 기본 언어를 'ko'로 설정
 
-# 컴포넌트 초기화
-dashboard_component = DashboardComponent(current_lang)
-equipment_detail_component = EquipmentDetailComponent(current_lang)
-data_input_component = DataInputComponent(current_lang)
-reports_component = ReportsComponent(current_lang)
-admin_component = AdminComponent(current_lang)
-plan_management_component = PlanManagementComponent(current_lang)
-plan_suspension_component = PlanSuspensionComponent(current_lang)
-equipment_status_detail_component = EquipmentStatusDetailComponent(current_lang)
+# 호환성을 위한 언어 코드 변환
+current_lang = st.session_state.current_lang
+if current_lang == 'kr':
+    current_lang = 'ko'
+elif current_lang == 'vn':
+    current_lang = 'vi'
+
+# 컴포넌트 초기화 - 표준화된 언어 코드 사용
+dashboard_component = DashboardComponent(lang=current_lang)
+equipment_detail_component = EquipmentDetailComponent(lang=current_lang)
+data_input_component = DataInputComponent(lang=current_lang)
+reports_component = ReportsComponent(lang=current_lang)
+admin_component = AdminComponent(lang=current_lang)
+plan_management_component = PlanManagementComponent(lang=current_lang)
+plan_suspension_component = PlanSuspensionComponent(lang=current_lang)
+equipment_status_detail_component = EquipmentStatusDetailComponent(lang=current_lang)
 
 # 상단 헤더
 col1, col2 = st.columns([3, 1])
@@ -298,13 +336,13 @@ with col1:
 # 언어 선택
 lang_col1, lang_col2 = st.columns([9, 1])
 with lang_col2:
-    selected_lang = st.radio("", ["한국어", "Tiếng Việt"], index=0 if current_lang == 'kr' else 1, horizontal=True, label_visibility="collapsed")
+    selected_lang = st.radio("", ["한국어", "Tiếng Việt"], index=0 if current_lang == 'ko' else 1, horizontal=True, label_visibility="collapsed")
     
-    if (selected_lang == "한국어" and current_lang != 'kr') or (selected_lang == "Tiếng Việt" and current_lang != 'vn'):
+    if (selected_lang == "한국어" and current_lang != 'ko') or (selected_lang == "Tiếng Việt" and current_lang != 'vi'):
         if selected_lang == "한국어":
-            st.session_state.current_lang = 'kr'
+            st.session_state.current_lang = 'ko'
         else:
-            st.session_state.current_lang = 'vn'
+            st.session_state.current_lang = 'vi'
         st.rerun()
 
 # 개발 모드 자동 로그인 처리
