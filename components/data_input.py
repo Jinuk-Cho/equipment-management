@@ -268,7 +268,12 @@ def compress_image(file, max_size=1024, quality=85):
             new_w, new_h = max_size, int(h * max_size / w)
         else:
             new_w, new_h = int(w * max_size / h), max_size
-        img = img.resize((new_w, new_h), Image.LANCZOS)
+        # LANCZOS 대신 호환성 있는 리사이징 필터 사용
+        try:
+            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        except AttributeError:
+            # 구버전 Pillow에서는 ANTIALIAS 사용
+            img = img.resize((new_w, new_h), Image.ANTIALIAS)
     
     # 압축된 이미지를 바이트로 변환
     buffer = io.BytesIO()
@@ -278,21 +283,24 @@ def compress_image(file, max_size=1024, quality=85):
     return buffer
 
 class DataInputComponent:
-    def __init__(self):
-        pass
+    def __init__(self, lang=None):
+        self.lang = lang if lang else 'kr'
         
     def render(self):
         """데이터 입력 페이지를 표시합니다."""
-        lang = st.session_state.language
+        # 로컬 언어 설정 또는 세션 상태에서 가져오기 
+        lang = self.lang
+        if 'current_lang' in st.session_state:
+            lang = st.session_state.current_lang
         
         st.title(get_input_text("data_input", lang))
         
         # 입력 유형 선택
         input_tabs = st.tabs([
-            "오류 입력",
-            "부품교체 입력",
-            "모델교체 입력",
-            "설비 정지 입력"
+            get_input_text("error_input", lang),
+            get_input_text("parts_input", lang),
+            get_input_text("model_change_input", lang),
+            get_input_text("equipment_stop_input", lang)
         ])
         
         # 오류 입력 탭
