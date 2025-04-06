@@ -2,6 +2,9 @@ import streamlit as st
 import traceback
 import sys
 
+# 개발 모드 설정 (True: 자동 로그인, False: 일반 로그인)
+DEV_MODE = True
+
 # 페이지 설정
 st.set_page_config(
     page_title="설비 관리 시스템 | Hệ thống quản lý thiết bị",
@@ -25,7 +28,7 @@ try:
     from components.admin import AdminComponent
     from components.plan_suspension import PlanSuspensionComponent
     from components.plan_management import PlanManagementComponent
-    from components.plan_suspension_management import PlanSuspensionManagementComponent
+    from components.equipment_status_detail import EquipmentStatusDetailComponent
 except Exception as e:
     st.error(f"앱 초기화 중 오류가 발생했습니다: {str(e)}")
     st.code(traceback.format_exc())
@@ -224,9 +227,26 @@ st.markdown("""
 
 # 세션 상태 초기화
 if 'user' not in st.session_state:
-    st.session_state.user = None
+    if DEV_MODE:
+        # 개발 모드에서는 자동으로 관리자 계정으로 로그인
+        st.session_state.user = {
+            'email': 'admin@example.com',
+            'name': 'Administrator',
+            'role': 'admin'
+        }
+        st.session_state.role = 'admin'
+    else:
+        st.session_state.user = None
+else:
+    # 이미 로그인된 상태면 그대로 유지
+    pass
+
 if 'role' not in st.session_state:
-    st.session_state.role = None
+    if DEV_MODE:
+        st.session_state.role = 'admin'
+    else:
+        st.session_state.role = None
+
 if 'language' not in st.session_state:
     st.session_state.language = 'ko'
 if 'current_page' not in st.session_state:
@@ -268,7 +288,7 @@ reports_component = ReportsComponent()
 admin_component = AdminComponent()
 plan_management_component = PlanManagementComponent()
 plan_suspension_component = PlanSuspensionComponent()
-plan_suspension_management_component = PlanSuspensionManagementComponent()
+equipment_status_detail_component = EquipmentStatusDetailComponent()
 
 # 상단 바
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -297,6 +317,129 @@ with col3:
             st.rerun()
 
 # 인증 상태 확인
+if 'user' not in st.session_state or st.session_state.user is None:
+    # 개발 모드에서 자동 로그인
+    if DEV_MODE:
+        # 개발 모드에서는 관리자로 자동 로그인
+        st.session_state.user = {
+            'email': 'admin',
+            'name': 'admin'
+        }
+        st.session_state.role = 'admin'
+    else:
+        # 로그인 화면 표시
+        if st.session_state.auth_view == 'login':
+            with st.container():
+                st.markdown(f"""<h2 class="login-title">{get_text('login_title', current_lang)}</h2>""", unsafe_allow_html=True)
+                
+                email = st.text_input(get_text("email", current_lang))
+                password = st.text_input(get_text("password", current_lang), type="password")
+                
+                login_col1, login_col2 = st.columns(2)
+                
+                with login_col1:
+                    if st.button(get_text("login", current_lang), type="primary", use_container_width=True):
+                        if not email or not password:
+                            st.error(get_text("fill_all_fields", current_lang))
+                        else:
+                            # 관리자 로그인 처리
+                            if email == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                                st.session_state.user = {
+                                    'email': email,
+                                    'name': 'Administrator',
+                                    'role': 'admin'
+                                }
+                                st.session_state.role = 'admin'
+                                st.rerun()
+                            else:
+                                # 일반 사용자 로그인 처리
+                                try:
+                                    user_data = sign_in_user(email, password)
+                                    if user_data:
+                                        st.session_state.user = user_data
+                                        st.session_state.role = user_data.get('role', 'user')
+                                        st.rerun()
+                                    else:
+                                        st.error(get_text("invalid_credentials", current_lang))
+                                except Exception as e:
+                                    st.error(f"{get_text('login_error', current_lang)}: {str(e)}")
+                
+                with login_col2:
+                    if st.button(get_text("demo_login", current_lang), type="secondary", use_container_width=True):
+                        # 데모 계정으로 로그인
+                        st.session_state.user = {
+                            'email': 'demo@example.com',
+                            'name': 'Demo User',
+                            'role': 'user'
+                        }
+                        st.session_state.role = 'user'
+                        st.rerun()
+                
+                # 회원가입 링크
+                st.markdown(
+                    f"""
+                    <div class="create-account-link">
+                        <span>{get_text('no_account', current_lang)}</span>
+                        <a href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('create_account', current_lang)}</a>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                # 회원가입 링크 처리 - style 파라미터 제거
+                if False:  # 숨김 처리를 위해 조건을 False로 설정
+                    if st.button(get_text("create_account", current_lang), key="create_account_btn"):
+                        st.session_state.auth_view = 'register'
+                        st.rerun()
+    else:
+        # 회원가입 화면
+        with st.container():
+            st.markdown(f"""<h2 class="login-title">{get_text('register_title', current_lang)}</h2>""", unsafe_allow_html=True)
+            
+            reg_col1, reg_col2 = st.columns(2)
+            
+            with reg_col1:
+                reg_name = st.text_input(get_text("name", current_lang))
+                reg_email = st.text_input(get_text("email", current_lang))
+                reg_password = st.text_input(get_text("password", current_lang), type="password")
+            
+            with reg_col2:
+                reg_department = st.text_input(get_text("department", current_lang))
+                reg_phone = st.text_input(get_text("phone", current_lang))
+                reg_password_confirm = st.text_input(get_text("confirm_password", current_lang), type="password")
+            
+            reg_btn_col1, reg_btn_col2 = st.columns(2)
+            
+            with reg_btn_col1:
+                if st.button(get_text("register", current_lang), type="primary", use_container_width=True):
+                    if not all([reg_name, reg_email, reg_password, reg_password_confirm]):
+                        st.error(get_text("fill_required_fields", current_lang))
+                    elif reg_password != reg_password_confirm:
+                        st.error(get_text("password_mismatch", current_lang))
+                    else:
+                        try:
+                            user_data = sign_up_user(reg_email, reg_password, {
+                                'name': reg_name,
+                                'department': reg_department,
+                                'phone': reg_phone,
+                                'role': 'user'
+                            })
+                            
+                            if user_data:
+                                st.success(get_text("registration_success", current_lang))
+                                time.sleep(2)
+                                st.session_state.auth_view = 'login'
+                                st.rerun()
+                            else:
+                                st.error(get_text("registration_error", current_lang))
+                        except Exception as e:
+                            st.error(f"{get_text('registration_error', current_lang)}: {str(e)}")
+            
+            with reg_btn_col2:
+                if st.button(get_text("back_to_login", current_lang), type="secondary", use_container_width=True):
+                    st.session_state.auth_view = 'login'
+                    st.rerun()
+
 if st.session_state.user:
     # 세션 만료 확인
     if not check_session_expiry():
@@ -362,7 +505,7 @@ if st.session_state.user:
                 logout()
         
         # 메뉴 바
-        menu_cols = st.columns(6)
+        menu_cols = st.columns(5)
         
         with menu_cols[0]:
             if st.button(get_text("dashboard", current_lang), key="menu_dashboard", 
@@ -393,12 +536,6 @@ if st.session_state.user:
                         type="primary" if st.session_state.current_page == 'plan_management' else "secondary", use_container_width=True):
                 set_page('plan_management')
                 st.rerun()
-                
-        with menu_cols[5]:
-            if st.button(get_text("plan_suspension", current_lang), key="menu_plan_suspension", 
-                        type="primary" if st.session_state.current_page == 'plan_suspension' else "secondary", use_container_width=True):
-                set_page('plan_suspension')
-                st.rerun()
         
         # 관리자인 경우 추가 메뉴
         if st.session_state.role == 'admin':
@@ -421,134 +558,8 @@ if st.session_state.user:
         elif st.session_state.current_page == 'plan_management':
             plan_management_component.render()
         elif st.session_state.current_page == 'plan_suspension':
-            try:
-                plan_suspension_management_component.render()
-            except Exception as e:
-                st.error(f"계획 정지 관리 화면 로딩 중 오류가 발생했습니다: {str(e)}")
-                st.code(traceback.format_exc())
-                st.info("오류를 해결하기 위해 다음을 확인하세요:")
-                st.info("1. 데이터베이스에 plan_suspensions 테이블이 있는지 확인하세요.")
-                st.info("2. Streamlit 버전이 최신인지 확인하세요 (st.container의 border 매개변수 지원 필요).")
-                st.info("3. 인터넷 연결이 안정적인지 확인하세요.")
-                
-                # 기본 정보만 표시하는 대체 UI 표시
-                st.subheader("계획 정지 관리")
-                st.write("현재 이 화면을 표시할 수 없습니다. 시스템 관리자에게 문의하세요.")
+            plan_suspension_component.render()
+        elif st.session_state.current_page == 'equipment_status_detail':
+            equipment_status_detail_component.render()
         elif st.session_state.current_page == 'admin_settings':
-            if st.session_state.role == 'admin':
-                admin_component.render()
-            else:
-                st.error(get_text("admin_required", current_lang))
-else:
-    # 로그인 화면 표시
-    if st.session_state.auth_view == 'login':
-        with st.container():
-            st.markdown(f"""<h2 class="login-title">{get_text('login_title', current_lang)}</h2>""", unsafe_allow_html=True)
-            
-            email = st.text_input(get_text("email", current_lang))
-            password = st.text_input(get_text("password", current_lang), type="password")
-            
-            login_col1, login_col2 = st.columns(2)
-            
-            with login_col1:
-                if st.button(get_text("login", current_lang), type="primary", use_container_width=True):
-                    if not email or not password:
-                        st.error(get_text("fill_all_fields", current_lang))
-                    else:
-                        # 관리자 로그인 처리
-                        if email == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-                            st.session_state.user = {
-                                'email': email,
-                                'name': 'Administrator',
-                                'role': 'admin'
-                            }
-                            st.session_state.role = 'admin'
-                            st.rerun()
-                        else:
-                            # 일반 사용자 로그인 처리
-                            try:
-                                user_data = sign_in_user(email, password)
-                                if user_data:
-                                    st.session_state.user = user_data
-                                    st.session_state.role = user_data.get('role', 'user')
-                                    st.rerun()
-                                else:
-                                    st.error(get_text("invalid_credentials", current_lang))
-                            except Exception as e:
-                                st.error(f"{get_text('login_error', current_lang)}: {str(e)}")
-            
-            with login_col2:
-                if st.button(get_text("demo_login", current_lang), type="secondary", use_container_width=True):
-                    # 데모 계정으로 로그인
-                    st.session_state.user = {
-                        'email': 'demo@example.com',
-                        'name': 'Demo User',
-                        'role': 'user'
-                    }
-                    st.session_state.role = 'user'
-                    st.rerun()
-            
-            # 회원가입 링크
-            st.markdown(
-                f"""
-                <div class="create-account-link">
-                    <span>{get_text('no_account', current_lang)}</span>
-                    <a href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('create_account', current_lang)}</a>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            
-            # 회원가입 링크 처리 - style 파라미터 제거
-            if False:  # 숨김 처리를 위해 조건을 False로 설정
-                if st.button(get_text("create_account", current_lang), key="create_account_btn"):
-                    st.session_state.auth_view = 'register'
-                    st.rerun()
-    else:
-        # 회원가입 화면
-        with st.container():
-            st.markdown(f"""<h2 class="login-title">{get_text('register_title', current_lang)}</h2>""", unsafe_allow_html=True)
-            
-            reg_col1, reg_col2 = st.columns(2)
-            
-            with reg_col1:
-                reg_name = st.text_input(get_text("name", current_lang))
-                reg_email = st.text_input(get_text("email", current_lang))
-                reg_password = st.text_input(get_text("password", current_lang), type="password")
-            
-            with reg_col2:
-                reg_department = st.text_input(get_text("department", current_lang))
-                reg_phone = st.text_input(get_text("phone", current_lang))
-                reg_password_confirm = st.text_input(get_text("confirm_password", current_lang), type="password")
-            
-            reg_btn_col1, reg_btn_col2 = st.columns(2)
-            
-            with reg_btn_col1:
-                if st.button(get_text("register", current_lang), type="primary", use_container_width=True):
-                    if not all([reg_name, reg_email, reg_password, reg_password_confirm]):
-                        st.error(get_text("fill_required_fields", current_lang))
-                    elif reg_password != reg_password_confirm:
-                        st.error(get_text("password_mismatch", current_lang))
-                    else:
-                        try:
-                            user_data = sign_up_user(reg_email, reg_password, {
-                                'name': reg_name,
-                                'department': reg_department,
-                                'phone': reg_phone,
-                                'role': 'user'
-                            })
-                            
-                            if user_data:
-                                st.success(get_text("registration_success", current_lang))
-                                time.sleep(2)
-                                st.session_state.auth_view = 'login'
-                                st.rerun()
-                            else:
-                                st.error(get_text("registration_error", current_lang))
-                        except Exception as e:
-                            st.error(f"{get_text('registration_error', current_lang)}: {str(e)}")
-            
-            with reg_btn_col2:
-                if st.button(get_text("back_to_login", current_lang), type="secondary", use_container_width=True):
-                    st.session_state.auth_view = 'login'
-                    st.rerun()
+            admin_component.render()

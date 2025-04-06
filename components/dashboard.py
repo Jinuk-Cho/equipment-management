@@ -42,14 +42,26 @@ class DashboardComponent:
                 with status_cols[0]:
                     error_count = status_counts.get(get_text("error", st.session_state.language), 0)
                     st.metric("고장", f"{error_count}대", delta_color="inverse")
+                    if error_count > 0 and st.button("상세보기", key="view_error_details"):
+                        st.session_state.view_equipment_status = "error"
+                        st.session_state.current_page = 'equipment_status_detail'
+                        st.rerun()
                     
                 with status_cols[1]:
                     pm_count = status_counts.get("설비 PM", 0)
                     st.metric("설비 PM", f"{pm_count}대", delta_color="off")
+                    if pm_count > 0 and st.button("상세보기", key="view_pm_details"):
+                        st.session_state.view_equipment_status = "pm"
+                        st.session_state.current_page = 'equipment_status_detail'
+                        st.rerun()
                     
                 with status_cols[2]:
                     model_change_count = status_counts.get("모델 변경", 0)
                     st.metric("모델 변경", f"{model_change_count}대", delta_color="off")
+                    if model_change_count > 0 and st.button("상세보기", key="view_model_change_details"):
+                        st.session_state.view_equipment_status = "model_change"
+                        st.session_state.current_page = 'equipment_status_detail'
+                        st.rerun()
                 
                 # 파이 차트로 시각화
                 fig_status = px.pie(

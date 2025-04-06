@@ -252,6 +252,15 @@ def compress_image(file, max_size=1024, quality=85):
     # 이미지 열기
     img = Image.open(file)
     
+    # RGBA 이미지를 RGB로 변환 (JPG는 알파 채널을 지원하지 않음)
+    if img.mode == 'RGBA':
+        # 흰색 배경에 합성
+        bg = Image.new('RGB', img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[3])  # 알파 채널을 마스크로 사용
+        img = bg
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+    
     # 이미지 크기 확인 및 조정
     w, h = img.size
     if max(w, h) > max_size:
@@ -671,11 +680,21 @@ class DataInputComponent:
                 )
                 
             with col2:
-                stop_start_time = st.datetime_input(
-                    get_input_text("stop_start_time", lang),
-                    value=datetime.now(),
-                    key="stop_start_time"
+                # datetime_input 대신 date_input과 time_input 사용
+                stop_date = st.date_input(
+                    "정지 날짜",
+                    value=datetime.now().date(),
+                    key="stop_date"
                 )
+                
+                stop_time = st.time_input(
+                    "정지 시각",
+                    value=datetime.now().time(),
+                    key="stop_time"
+                )
+                
+                # 날짜와 시간을 합쳐서 datetime 객체 생성
+                stop_start_time = datetime.combine(stop_date, stop_time)
                 
                 stop_duration = st.number_input(
                     "정지 시간 (분)",
@@ -718,7 +737,8 @@ class DataInputComponent:
                         # 저장 후 폼 초기화
                         st.session_state.stop_equipment_number = ""
                         st.session_state.stop_reason = get_input_text("stop_reason_pm", lang)
-                        st.session_state.stop_start_time = datetime.now()
+                        st.session_state.stop_date = datetime.now().date()
+                        st.session_state.stop_time = datetime.now().time()
                         st.session_state.stop_duration = 30
                         st.session_state.stop_worker = ""
                         st.session_state.stop_supervisor = ""
