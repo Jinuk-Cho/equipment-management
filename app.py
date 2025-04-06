@@ -1,4 +1,6 @@
 import streamlit as st
+import traceback
+import sys
 
 # 페이지 설정
 st.set_page_config(
@@ -8,20 +10,25 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-import time
-from datetime import datetime, timedelta
-from components.language import get_text, set_language
-from utils.supabase_client import sign_in_user, sign_up_user, get_supabase, update_data
+# 전역 예외 처리
+try:
+    import time
+    from datetime import datetime, timedelta
+    from components.language import get_text, set_language
+    from utils.supabase_client import sign_in_user, sign_up_user, get_supabase, update_data
 
-# 필요한 컴포넌트만 import
-from components.dashboard import DashboardComponent
-from components.equipment_detail import EquipmentDetailComponent
-from components.data_input import DataInputComponent
-from components.reports import ReportsComponent
-from components.admin import AdminComponent
-from components.plan_suspension import PlanSuspensionComponent
-from components.plan_management import PlanManagementComponent
-from components.plan_suspension_management import PlanSuspensionManagementComponent
+    # 필요한 컴포넌트만 import
+    from components.dashboard import DashboardComponent
+    from components.equipment_detail import EquipmentDetailComponent
+    from components.data_input import DataInputComponent
+    from components.reports import ReportsComponent
+    from components.admin import AdminComponent
+    from components.plan_suspension import PlanSuspensionComponent
+    from components.plan_management import PlanManagementComponent
+    from components.plan_suspension_management import PlanSuspensionManagementComponent
+except Exception as e:
+    st.error(f"앱 초기화 중 오류가 발생했습니다: {str(e)}")
+    st.code(traceback.format_exc())
 
 # 앱 재배포 트리거 - 2024.07.17
 
@@ -414,7 +421,19 @@ if st.session_state.user:
         elif st.session_state.current_page == 'plan_management':
             plan_management_component.render()
         elif st.session_state.current_page == 'plan_suspension':
-            plan_suspension_management_component.render()
+            try:
+                plan_suspension_management_component.render()
+            except Exception as e:
+                st.error(f"계획 정지 관리 화면 로딩 중 오류가 발생했습니다: {str(e)}")
+                st.code(traceback.format_exc())
+                st.info("오류를 해결하기 위해 다음을 확인하세요:")
+                st.info("1. 데이터베이스에 plan_suspensions 테이블이 있는지 확인하세요.")
+                st.info("2. Streamlit 버전이 최신인지 확인하세요 (st.container의 border 매개변수 지원 필요).")
+                st.info("3. 인터넷 연결이 안정적인지 확인하세요.")
+                
+                # 기본 정보만 표시하는 대체 UI 표시
+                st.subheader("계획 정지 관리")
+                st.write("현재 이 화면을 표시할 수 없습니다. 시스템 관리자에게 문의하세요.")
         elif st.session_state.current_page == 'admin_settings':
             if st.session_state.role == 'admin':
                 admin_component.render()

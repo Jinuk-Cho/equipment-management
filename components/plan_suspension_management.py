@@ -2,6 +2,14 @@ import streamlit as st
 from utils.supabase_client import get_supabase
 from components.language import get_text
 from datetime import datetime, date, timedelta
+import pkg_resources
+
+# Streamlit 버전 확인 (border 매개변수 호환성 체크)
+try:
+    st_version = pkg_resources.get_distribution("streamlit").version
+    supports_border = tuple(map(int, st_version.split('.'))) >= (1, 23, 0)
+except:
+    supports_border = False  # 버전 확인 실패 시 호환성 없음으로 가정
 
 class PlanSuspensionManagementComponent:
     def __init__(self, lang='ko'):
@@ -261,7 +269,13 @@ class PlanSuspensionManagementComponent:
                     if item_idx < len(items):
                         item = items[item_idx]
                         with cols[col_idx]:
-                            with st.container(border=True):
+                            # 버전 호환성을 고려한 컨테이너 생성
+                            if supports_border:
+                                container = st.container(border=True)
+                            else:
+                                container = st.container()
+                                
+                            with container:
                                 st.markdown(f"**설비번호:** {item.get('equipment_number', 'N/A')}")
                                 st.markdown(f"**설비명:** {item.get('equipment_name', 'N/A')}")
                                 st.markdown(f"**시작일:** {item.get('start_date', 'N/A')}")
@@ -316,7 +330,13 @@ class PlanSuspensionManagementComponent:
                     if item_idx < len(items):
                         item = items[item_idx]
                         with cols[col_idx]:
-                            with st.container(border=True):
+                            # 버전 호환성을 고려한 컨테이너 생성
+                            if supports_border:
+                                container = st.container(border=True)
+                            else:
+                                container = st.container()
+                                
+                            with container:
                                 st.markdown(f"**설비번호:** {item.get('equipment_number', 'N/A')}")
                                 st.markdown(f"**공정명:** {item.get('process_name', 'N/A')}")
                                 st.markdown(f"**변경 사항:** {item.get('model_from', 'N/A')} → {item.get('model_to', 'N/A')}")
