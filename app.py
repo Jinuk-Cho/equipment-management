@@ -33,7 +33,7 @@ except Exception as e:
     st.error(f"앱 초기화 중 오류가 발생했습니다: {str(e)}")
     st.code(traceback.format_exc())
 
-# 앱 재배포 트리거 - 2024.07.17
+# 앱 재배포 트리거 - 2024.07.19
 
 # Streamlit Cloud에서 환경 변수 가져오기
 ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
@@ -227,170 +227,160 @@ st.markdown("""
 
 # 세션 상태 초기화
 if 'user' not in st.session_state:
-    if DEV_MODE:
-        # 개발 모드에서는 자동으로 관리자 계정으로 로그인
-        st.session_state.user = {
-            'email': 'admin@example.com',
-            'name': 'Administrator',
-            'role': 'admin'
-        }
-        st.session_state.role = 'admin'
-    else:
-        st.session_state.user = None
-else:
-    # 이미 로그인된 상태면 그대로 유지
-    pass
+    st.session_state.user = None
 
 if 'role' not in st.session_state:
-    if DEV_MODE:
-        st.session_state.role = 'admin'
-    else:
-        st.session_state.role = None
+    st.session_state.role = None
 
-if 'language' not in st.session_state:
-    st.session_state.language = 'ko'
+if 'auth_view' not in st.session_state:
+    st.session_state.auth_view = 'login'
+
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'dashboard'
 
-# 로그인/회원가입 화면 상태
-if 'auth_view' not in st.session_state:
-    st.session_state.auth_view = 'login'  # 'login' 또는 'register'
+if 'current_lang' not in st.session_state:
+    st.session_state.current_lang = 'kr'
 
-# 페이지 변경 함수
-def set_page(page):
-    st.session_state.current_page = page
+if 'last_activity' not in st.session_state:
+    st.session_state.last_activity = datetime.now()
 
-# 로그아웃 함수
+# 기타 함수들
+def set_page(page_name):
+    st.session_state.current_page = page_name
+
+def check_session_expiry():
+    # 30분 세션 제한
+    if datetime.now() - st.session_state.last_activity > timedelta(minutes=30):
+        return False
+    st.session_state.last_activity = datetime.now()
+    return True
+
 def logout():
     st.session_state.user = None
     st.session_state.role = None
     st.session_state.current_page = 'dashboard'
     st.rerun()
 
-# 세션 만료 확인
-def check_session_expiry():
-    # 실제 구현에서는 토큰 만료 시간 확인 등의 로직 추가
-    return True
-
-# 사용자 프로필 업데이트 함수
 def update_user_profile(user_id, name, department, phone):
-    # 실제 구현에서는 데이터베이스 업데이트 로직 추가
-    return True
+    try:
+        # 스토어 또는 API를 이용해 사용자 프로필 업데이트
+        # 여기서는 예제로 항상 성공으로 가정
+        update_data('users', user_id, {'name': name, 'department': department, 'phone': phone})
+        return True
+    except Exception as e:
+        print(f"Profile update error: {str(e)}")
+        return False
 
-# 현재 언어 가져오기
-current_lang = st.session_state.language
+# 언어 선택 초기화
+current_lang = st.session_state.current_lang
 
-# 컴포넌트 초기화 - 한 번만 초기화합니다
-dashboard_component = DashboardComponent()
-equipment_detail_component = EquipmentDetailComponent()
-data_input_component = DataInputComponent()
-reports_component = ReportsComponent()
-admin_component = AdminComponent()
-plan_management_component = PlanManagementComponent()
-plan_suspension_component = PlanSuspensionComponent()
-equipment_status_detail_component = EquipmentStatusDetailComponent()
+# 컴포넌트 초기화
+dashboard_component = DashboardComponent(current_lang)
+equipment_detail_component = EquipmentDetailComponent(current_lang)
+data_input_component = DataInputComponent(current_lang)
+reports_component = ReportsComponent(current_lang)
+admin_component = AdminComponent(current_lang)
+plan_management_component = PlanManagementComponent(current_lang)
+plan_suspension_component = PlanSuspensionComponent(current_lang)
+equipment_status_detail_component = EquipmentStatusDetailComponent(current_lang)
 
-# 상단 바
-col1, col2, col3 = st.columns([1, 2, 1])
+# 상단 헤더
+col1, col2 = st.columns([3, 1])
 
 with col1:
-    st.markdown(
-        f"""
-        <div class="system-title">
-            <div class="system-title-vn">Hệ thống quản lý thiết bị</div>
-            <div class="system-title-kr">설비 관리 시스템</div>
+    st.markdown(f"""
+        <div>
+            <h1 class="system-title system-title-vn">Hệ thống quản lý thiết bị</h1>
+            <h1 class="system-title system-title-kr">설비 관리 시스템</h1>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
 
-with col3:
-    # 언어 선택기
-    lang_col1, lang_col2 = st.columns(2)
-    with lang_col1:
-        if st.button("🇰🇷 한국어", key="ko_button", type="primary" if current_lang == 'ko' else "secondary"):
-            set_language('ko')
-            st.rerun()
-    with lang_col2:
-        if st.button("🇻🇳 Tiếng Việt", key="vi_button", type="primary" if current_lang == 'vi' else "secondary"):
-            set_language('vi')
-            st.rerun()
+# 언어 선택
+lang_col1, lang_col2 = st.columns([9, 1])
+with lang_col2:
+    selected_lang = st.radio("", ["한국어", "Tiếng Việt"], index=0 if current_lang == 'kr' else 1, horizontal=True, label_visibility="collapsed")
+    
+    if (selected_lang == "한국어" and current_lang != 'kr') or (selected_lang == "Tiếng Việt" and current_lang != 'vn'):
+        if selected_lang == "한국어":
+            st.session_state.current_lang = 'kr'
+        else:
+            st.session_state.current_lang = 'vn'
+        st.rerun()
+
+# 개발 모드 자동 로그인 처리
+if DEV_MODE and not st.session_state.user:
+    st.session_state.user = {
+        'email': 'admin',
+        'name': 'admin'
+    }
+    st.session_state.role = 'admin'
 
 # 인증 상태 확인
-if 'user' not in st.session_state or st.session_state.user is None:
-    # 개발 모드에서 자동 로그인
-    if DEV_MODE:
-        # 개발 모드에서는 관리자로 자동 로그인
-        st.session_state.user = {
-            'email': 'admin',
-            'name': 'admin'
-        }
-        st.session_state.role = 'admin'
-    else:
-        # 로그인 화면 표시
-        if st.session_state.auth_view == 'login':
-            with st.container():
-                st.markdown(f"""<h2 class="login-title">{get_text('login_title', current_lang)}</h2>""", unsafe_allow_html=True)
-                
-                email = st.text_input(get_text("email", current_lang))
-                password = st.text_input(get_text("password", current_lang), type="password")
-                
-                login_col1, login_col2 = st.columns(2)
-                
-                with login_col1:
-                    if st.button(get_text("login", current_lang), type="primary", use_container_width=True):
-                        if not email or not password:
-                            st.error(get_text("fill_all_fields", current_lang))
+if not st.session_state.user:
+    # 로그인 화면 표시
+    if st.session_state.auth_view == 'login':
+        with st.container():
+            st.markdown(f"""<h2 class="login-title">{get_text('login_title', current_lang)}</h2>""", unsafe_allow_html=True)
+            
+            email = st.text_input(get_text("email", current_lang))
+            password = st.text_input(get_text("password", current_lang), type="password")
+            
+            login_col1, login_col2 = st.columns(2)
+            
+            with login_col1:
+                if st.button(get_text("login", current_lang), type="primary", use_container_width=True):
+                    if not email or not password:
+                        st.error(get_text("fill_all_fields", current_lang))
+                    else:
+                        # 관리자 로그인 처리
+                        if email == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+                            st.session_state.user = {
+                                'email': email,
+                                'name': 'Administrator',
+                                'role': 'admin'
+                            }
+                            st.session_state.role = 'admin'
+                            st.rerun()
                         else:
-                            # 관리자 로그인 처리
-                            if email == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-                                st.session_state.user = {
-                                    'email': email,
-                                    'name': 'Administrator',
-                                    'role': 'admin'
-                                }
-                                st.session_state.role = 'admin'
-                                st.rerun()
-                            else:
-                                # 일반 사용자 로그인 처리
-                                try:
-                                    user_data = sign_in_user(email, password)
-                                    if user_data:
-                                        st.session_state.user = user_data
-                                        st.session_state.role = user_data.get('role', 'user')
-                                        st.rerun()
-                                    else:
-                                        st.error(get_text("invalid_credentials", current_lang))
-                                except Exception as e:
-                                    st.error(f"{get_text('login_error', current_lang)}: {str(e)}")
-                
-                with login_col2:
-                    if st.button(get_text("demo_login", current_lang), type="secondary", use_container_width=True):
-                        # 데모 계정으로 로그인
-                        st.session_state.user = {
-                            'email': 'demo@example.com',
-                            'name': 'Demo User',
-                            'role': 'user'
-                        }
-                        st.session_state.role = 'user'
-                        st.rerun()
-                
-                # 회원가입 링크
-                st.markdown(
-                    f"""
-                    <div class="create-account-link">
-                        <span>{get_text('no_account', current_lang)}</span>
-                        <a href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('create_account', current_lang)}</a>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-                
-                # 회원가입 링크 처리 - style 파라미터 제거
-                if False:  # 숨김 처리를 위해 조건을 False로 설정
-                    if st.button(get_text("create_account", current_lang), key="create_account_btn"):
-                        st.session_state.auth_view = 'register'
-                        st.rerun()
+                            # 일반 사용자 로그인 처리
+                            try:
+                                user_data = sign_in_user(email, password)
+                                if user_data:
+                                    st.session_state.user = user_data
+                                    st.session_state.role = user_data.get('role', 'user')
+                                    st.rerun()
+                                else:
+                                    st.error(get_text("invalid_credentials", current_lang))
+                            except Exception as e:
+                                st.error(f"{get_text('login_error', current_lang)}: {str(e)}")
+            
+            with login_col2:
+                if st.button(get_text("demo_login", current_lang), type="secondary", use_container_width=True):
+                    # 데모 계정으로 로그인
+                    st.session_state.user = {
+                        'email': 'demo@example.com',
+                        'name': 'Demo User',
+                        'role': 'user'
+                    }
+                    st.session_state.role = 'user'
+                    st.rerun()
+            
+            # 회원가입 링크
+            st.markdown(
+                f"""
+                <div class="create-account-link">
+                    <span>{get_text('no_account', current_lang)}</span>
+                    <a href="#" onclick="setTimeout(function(){{window.location.reload()}}, 100)">{get_text('create_account', current_lang)}</a>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            # 회원가입 링크 처리 - style 파라미터 제거
+            if False:  # 숨김 처리를 위해 조건을 False로 설정
+                if st.button(get_text("create_account", current_lang), key="create_account_btn"):
+                    st.session_state.auth_view = 'register'
+                    st.rerun()
     else:
         # 회원가입 화면
         with st.container():
@@ -439,8 +429,8 @@ if 'user' not in st.session_state or st.session_state.user is None:
                 if st.button(get_text("back_to_login", current_lang), type="secondary", use_container_width=True):
                     st.session_state.auth_view = 'login'
                     st.rerun()
-
-if st.session_state.user:
+else:
+    # 인증된 사용자만 접근 가능한 영역
     # 세션 만료 확인
     if not check_session_expiry():
         st.warning(get_text("session_expired", current_lang))
